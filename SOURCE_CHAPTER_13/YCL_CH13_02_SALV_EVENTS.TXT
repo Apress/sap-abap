@@ -1,0 +1,593 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH13_02_SALV_EVENTS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH13_02_SALV_EVENTS.
+
+********************************************************************
+* ALV Report WITH class CL_SALV_TABLE:                            **
+* For a Specic Company Code: Customer Wise Sales Summary & Detail **
+********************************************************************
+
+TYPE-POOLS: COL, ICON.
+
+CLASS LCLASS DEFINITION DEFERRED.
+
+DATA:
+      SALES_TAB  TYPE STANDARD TABLE OF " data - summary
+             YCL_CH12_SALES_SUM_STRU1,
+      SALES_STRU TYPE YCL_CH12_SALES_SUM_STRU1,
+
+      ALV_GRID1  TYPE REF TO CL_SALV_TABLE,
+      CCONT      TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+      ERROR      TYPE REF TO CX_SALV_MSG,    " SALV exception
+
+      FUNC       TYPE RANGE OF SY-UCOMM WITH HEADER LINE,
+
+      FUNCTIONS  TYPE REF TO CL_SALV_FUNCTIONS_LIST, " functions
+      ICN        TYPE STRING, " icon
+      TXT        TYPE STRING, " function text
+      TTIP       TYPE STRING, " tool tip
+
+      COLUMNS    TYPE REF TO CL_SALV_COLUMNS_TABLE,
+      COLUMN     TYPE REF TO CL_SALV_COLUMN_TABLE,
+      COL_STRU   TYPE LVC_S_COLO,
+      FLTRS      TYPE REF TO CL_SALV_FILTERS,
+
+      EVENT_REF  TYPE REF TO CL_SALV_EVENTS_TABLE,
+      LCLASS_REF TYPE REF TO LCLASS,
+      LAYOUT_REF TYPE REF TO CL_SALV_LAYOUT.
+
+DATA: AGGS       TYPE REF TO CL_SALV_AGGREGATIONS,
+      AGG        TYPE REF TO CL_SALV_AGGREGATION,
+
+
+*     OK_CODE    TYPE SY-UCOMM,
+      LAYOUT_KEY TYPE SALV_S_LAYOUT_KEY,
+
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS.
+
+***** declared outside class because header line declaration
+***** not allowed inside classes
+
+ DATA:  SRL_NO_SO     TYPE RANGE OF YCL_CH12_SALES_SUM_STRU1-SRL_NO
+                  WITH HEADER LINE,
+        KUNNR_SO      TYPE RANGE OF YCL_CH12_SALES_SUM_STRU1-KUNNR
+                  WITH HEADER LINE,
+        NAME1_SO      TYPE RANGE OF YCL_CH12_SALES_SUM_STRU1-NAME1
+                  WITH HEADER LINE,
+        ORT01_SO      TYPE RANGE OF YCL_CH12_SALES_SUM_STRU1-ORT01
+                  WITH HEADER LINE,
+        NETWR_SO      TYPE RANGE OF YCL_CH12_SALES_SUM_STRU1-NETWR
+                  WITH HEADER LINE.
+
+
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000.
+
+*************************************************
+*************************************************
+CLASS LCLASS DEFINITION.
+ PUBLIC SECTION.
+ CLASS-METHODS:
+
+  SALV_ERROR_MSG
+   IMPORTING
+    ERROR TYPE REF TO CX_SALV_MSG,
+
+  ON_EXIT FOR EVENT ADDED_FUNCTION OF CL_SALV_EVENTS_TABLE
+   IMPORTING E_SALV_FUNCTION. " TYPE: SALV_DE_FUNCTION.
+
+ METHODS: DB_CLICK FOR EVENT DOUBLE_CLICK OF
+           CL_SALV_EVENTS_TABLE IMPORTING ROW COLUMN,
+           "RAISING CX_SALV_MSG,
+
+          CLOSE_DBOX FOR EVENT CLOSE OF CL_GUI_DIALOGBOX_CONTAINER,
+          AF_FN FOR EVENT AFTER_SALV_FUNCTION OF  CL_SALV_EVENTS_TABLE
+           IMPORTING E_SALV_FUNCTION.
+
+ PRIVATE SECTION.
+
+  DATA:  BEGIN OF BILLS_STRU,
+         VBELN    TYPE VBRK-VBELN,
+         FKDAT    TYPE VBRK-FKDAT,
+         WAERK    TYPE VBRK-WAERK,
+         KURRF    TYPE VBRK-KURRF,
+         NETWR    TYPE VBRK-NETWR,
+        END OF BILLS_STRU,
+        BILLS_TAB LIKE STANDARD TABLE OF BILLS_STRU. " billing docs
+
+ DATA:  ALV_GRID2     TYPE REF TO CL_SALV_TABLE,
+        DCONT         TYPE REF TO CL_GUI_DIALOGBOX_CONTAINER,
+
+        FUNCTIONS1    TYPE REF TO CL_SALV_FUNCTIONS_LIST, " functions
+
+        COLUMNS1      TYPE REF TO CL_SALV_COLUMNS_TABLE,
+        COLUMN1       TYPE REF TO CL_SALV_COLUMN_TABLE,
+
+        AGGS1         TYPE REF TO CL_SALV_AGGREGATIONS,
+        AGG1          TYPE REF TO CL_SALV_AGGREGATION,
+
+        ROCL          TYPE LVC_S_STBL,
+        CAPTON(70)    TYPE C,
+
+
+        BEGIN OF SALES_STU,
+         KUNNR        TYPE YCL_CH12_SALES_SUM_STRU1-KUNNR,
+         NETWR        TYPE YCL_CH12_SALES_SUM_STRU1-NETWR,
+         KURRF        TYPE VBRK-KURRF,
+        END OF SALES_STU,
+        SALES_TB      LIKE SORTED TABLE OF SALES_STU WITH UNIQUE KEY KUNNR,
+
+        SORTS         TYPE REF TO CL_SALV_SORTS,
+        SORT          TYPE REF TO CL_SALV_SORT,
+        TSORTS        TYPE SALV_T_SORT_REF,
+        TSORTS1       TYPE SALV_T_SORT_REF,
+        TSORTS_STRU   LIKE LINE OF TSORTS,
+        SEQ           TYPE SALV_DE_SORT_SEQUENCE,
+        SORT_FLD      TYPE LINE OF ABAP_SORTORDER_TAB,
+        SORT_TAB      TYPE ABAP_SORTORDER_TAB,
+
+        FILTERS       TYPE REF TO CL_SALV_FILTERS,
+        FILTER        TYPE REF TO CL_SALV_FILTER,
+        TFILTERS      TYPE SALV_T_FILTER_REF,
+        TFLTRS_STRU   TYPE SALV_S_FILTER_REF,
+        TSEL_OPT      TYPE SALV_T_SELOPT_REF,
+        SSEL_OPT      TYPE REF TO CL_SALV_SELOPT,
+
+        SEL_REF       TYPE REF TO CL_SALV_SELECTIONS,
+        CURR_CELL     TYPE SALV_S_CELL,
+
+        CNTR          TYPE SY-TABIX,
+        INDX          TYPE SY-TABIX.
+
+ENDCLASS.
+
+CLASS LCLASS IMPLEMENTATION.
+
+ METHOD SALV_ERROR_MSG.  " report error in ALV
+  DATA: MESSAG TYPE BAL_S_MSG,
+        TYPE   TYPE C VALUE 'E' .
+
+  MESSAG = ERROR->GET_MESSAGE( ).
+
+  MESSAGE ID MESSAG-MSGID
+  TYPE TYPE
+  NUMBER MESSAG-MSGNO
+  WITH MESSAG-MSGV1
+       MESSAG-MSGV2
+       MESSAG-MSGV3
+       MESSAG-MSGV4.
+
+ ENDMETHOD.
+****************************************************************
+ METHOD ON_EXIT.        " react on own button on ALV tool bar
+  CASE E_SALV_FUNCTION. " exit ALV, return to SELECTION-SCREEN
+   WHEN 'BACK'.
+    SET SCREEN 0.
+    LEAVE SCREEN.
+  ENDCASE.
+ ENDMETHOD.
+
+****************************************************************
+ METHOD DB_CLICK. " generate detail on double click on summary
+
+  SEL_REF   = ALV_GRID1->GET_SELECTIONS( ).
+  CURR_CELL = SEL_REF->GET_CURRENT_CELL( ).
+
+  CHECK CURR_CELL-ROW > 0. " double clicking only on regular rows
+                           " not on total/subtotal rows
+
+  READ TABLE SALES_TAB INTO SALES_STRU INDEX ROW.
+  SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK INTO TABLE
+    BILLS_TAB WHERE KUNAG = SALES_STRU-KUNNR AND
+     BUKRS = CCODE.
+
+  LOOP AT BILLS_TAB INTO BILLS_STRU.
+   BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+   MODIFY BILLS_TAB FROM BILLS_STRU.
+  ENDLOOP.
+
+  CONCATENATE TEXT-002 SALES_STRU-KUNNR '/' SALES_STRU-NAME1
+    TEXT-003 WAERS INTO CAPTON.
+
+   CREATE OBJECT DCONT
+     EXPORTING
+       WIDTH         = 450
+       HEIGHT        = 200
+       TOP           = 05
+       LEFT          = 520
+       CAPTION       = CAPTON.
+
+  SET HANDLER LCLASS_REF->CLOSE_DBOX FOR DCONT.
+   " register handler method CLOSE->DBOX
+
+  CCONT->SET_ENABLE( ENABLE = ' ' ).
+   " disable first ALV grid instance
+
+  TRY.
+
+    CALL METHOD CL_SALV_TABLE=>FACTORY
+     EXPORTING
+       R_CONTAINER       = DCONT
+       LIST_DISPLAY      = '' " else run time error
+     IMPORTING
+       R_SALV_TABLE      = ALV_GRID2
+     CHANGING
+       T_TABLE           = BILLS_TAB[].
+
+    CATCH CX_SALV_MSG INTO ERROR.
+
+    CALL METHOD LCLASS=>SALV_ERROR_MSG
+     EXPORTING
+      ERROR = ERROR.
+
+  ENDTRY.
+
+
+******* optimize column width********
+
+  COLUMNS1 = ALV_GRID2->GET_COLUMNS( ).
+  COLUMNS1->SET_OPTIMIZE( VALUE = 'X' ).
+
+  AGGS1 = ALV_GRID2->GET_AGGREGATIONS( ).
+
+***** total for NETWR enabled, for KURRF disabled
+
+  AGG1 = AGGS1->ADD_AGGREGATION( COLUMNNAME = 'NETWR' AGGREGATION = 1 ).
+  AGGS1->SET_AGGREGATION_ALLOWED( COLUMNNAME = 'KURRF' VALUE = ' ' ).
+
+************ enable all default functions *********
+
+  FUNCTIONS1 = ALV_GRID2->GET_FUNCTIONS( ).
+  FUNCTIONS1->SET_ALL( ). "DEFAULT( ).
+
+  ALV_GRID2->DISPLAY( ).
+
+ ENDMETHOD.
+
+****************************************************************
+ METHOD CLOSE_DBOX.  " close dialogue box container-detail ALV
+  CALL METHOD DCONT->FREE( ).
+  FREE DCONT.
+  FREE ALV_GRID2.
+  CCONT->SET_ENABLE( ENABLE = 'X' ).
+ ENDMETHOD.
+
+****************************************************************
+ METHOD AF_FN. " adjust/re-generate serial number field SRL_NO
+               " as per filter & sort settings
+
+CHECK E_SALV_FUNCTION IN FUNC[].
+
+* convert sort settings
+
+  ALV_GRID1->GET_METADATA( ).
+
+  ALV_GRID1->REFRESH( REFRESH_MODE = 2 ).
+
+  REFRESH: TSORTS, TSORTS1.
+  SORTS  =   ALV_GRID1->GET_SORTS( ).
+  TSORTS =   SORTS->GET( ).
+*  TSORTS1 = TSORTS.
+  DESCRIBE TABLE TSORTS LINES CNTR.
+  DO.
+   IF CNTR <= 0.
+    EXIT.
+   ENDIF.
+   READ TABLE TSORTS INTO TSORTS_STRU INDEX CNTR.
+   APPEND TSORTS_STRU TO TSORTS1.
+   CNTR = CNTR - 1.
+   ENDDO.
+
+  REFRESH SORT_TAB.
+  CLEAR SORT_FLD.
+
+  LOOP AT TSORTS1 INTO TSORTS_STRU.
+   SEQ = TSORTS_STRU-R_SORT->GET_SEQUENCE( ).
+   IF SEQ = 2.
+     SORT_FLD-NAME = TSORTS_STRU-COLUMNNAME.
+     SORT_FLD-DESCENDING = 'X'.
+    ELSE.
+     SORT_FLD-NAME = TSORTS_STRU-COLUMNNAME.
+     SORT_FLD-DESCENDING = ' '.
+   ENDIF.
+   APPEND SORT_FLD TO SORT_TAB.
+  ENDLOOP.
+
+***************************************************
+
+  REFRESH: SRL_NO_SO, KUNNR_SO, NAME1_SO, ORT01_SO, NETWR_SO.
+
+  FILTERS   = ALV_GRID1->GET_FILTERS( ).
+  TFILTERS   =   FILTERS->GET( ).
+
+* convert filter settings into range variable values
+
+  LOOP AT TFILTERS INTO TFLTRS_STRU.
+   TSEL_OPT = TFLTRS_STRU-R_FILTER->GET( ).
+    LOOP AT TSEL_OPT INTO SSEL_OPT.
+
+     CASE TFLTRS_STRU-COLUMNNAME.
+
+      WHEN 'SRL_NO'. " no filter for SRL_NO
+*       SRL_NO_SO-SIGN   = SSEL_OPT->GET_SIGN( ).
+*       SRL_NO_SO-OPTION = SSEL_OPT->GET_OPTION( ).
+*       SRL_NO_SO-LOW    = SSEL_OPT->GET_LOW( ).
+*       SRL_NO_SO-HIGH   = SSEL_OPT->GET_HIGH( ).
+*       APPEND SRL_NO_SO TO SRL_NO_SO.
+
+      WHEN 'KUNNR'.
+       KUNNR_SO-HIGH   = SSEL_OPT->GET_HIGH( ).
+       KUNNR_SO-LOW    = SSEL_OPT->GET_LOW( ).
+       KUNNR_SO-SIGN   = SSEL_OPT->GET_SIGN( ).
+       KUNNR_SO-OPTION = SSEL_OPT->GET_OPTION( ).
+
+       APPEND KUNNR_SO TO KUNNR_SO.
+
+      WHEN 'NAME1'.
+       NAME1_SO-SIGN   = SSEL_OPT->GET_SIGN( ).
+       NAME1_SO-OPTION = SSEL_OPT->GET_OPTION( ).
+       NAME1_SO-LOW    = SSEL_OPT->GET_LOW( ).
+       NAME1_SO-HIGH   = SSEL_OPT->GET_HIGH( ).
+       APPEND NAME1_SO TO NAME1_SO.
+
+      WHEN 'ORT01'.
+       ORT01_SO-SIGN   = SSEL_OPT->GET_SIGN( ).
+       ORT01_SO-OPTION = SSEL_OPT->GET_OPTION( ).
+       ORT01_SO-LOW    = SSEL_OPT->GET_LOW( ).
+       ORT01_SO-HIGH   = SSEL_OPT->GET_HIGH( ).
+       APPEND ORT01_SO TO ORT01_SO.
+*
+      WHEN 'NETWR'.
+       NETWR_SO-SIGN   = SSEL_OPT->GET_SIGN( ).
+       NETWR_SO-OPTION = SSEL_OPT->GET_OPTION( ).
+       NETWR_SO-LOW    = SSEL_OPT->GET_LOW( ).
+       NETWR_SO-HIGH   = SSEL_OPT->GET_HIGH( ).
+       APPEND NETWR_SO TO NETWR_SO.
+
+     ENDCASE.
+
+    ENDLOOP.
+
+   ENDLOOP.
+
+  REFRESH SALES_TB.
+
+* create internal table rows as per filter, sort settings
+
+  SELECT KUNNR NETWR KURRF FROM YCL_CH05_VBRKKNA INTO SALES_STU
+   WHERE BUKRS = CCODE
+         AND KUNNR IN KUNNR_SO
+         AND NAME1 IN NAME1_SO
+         AND ORT01 IN ORT01_SO. " NETWR_SO after summarization
+
+   SALES_STU-NETWR = SALES_STU-NETWR * SALES_STU-KURRF.
+   SALES_STU-KURRF = 0.
+   COLLECT SALES_STU INTO SALES_TB.
+  ENDSELECT.
+
+  CNTR = 0.
+  SORT SALES_TAB BY (SORT_TAB). " sort parameters of internal table
+                                " internal table (run time sort specs)
+
+  CLEAR SALES_STRU.
+  MODIFY SALES_TAB FROM SALES_STRU TRANSPORTING SRL_NO WHERE SRL_NO <> ' '.
+
+***** serial number generation *****
+
+  LOOP AT SALES_TAB INTO SALES_STRU.
+
+   INDX = SY-TABIX.
+   READ TABLE SALES_TB INTO SALES_STU WITH KEY KUNNR = SALES_STRU-KUNNR.
+
+   IF SY-SUBRC <> 0.
+    CONTINUE.
+   ENDIF.
+
+   IF SALES_STRU-NETWR IN NETWR_SO. " apply filter on NETWR
+    CNTR = CNTR + 1.
+    SALES_STRU-SRL_NO = CNTR.
+    MODIFY SALES_TAB FROM SALES_STRU INDEX INDX.
+   ENDIF.
+
+  ENDLOOP.
+  COLUMNS->SET_OPTIMIZE( VALUE = 'X' ).
+
+  INDX = 0.
+  LOOP AT TSORTS1 INTO TSORTS_STRU.
+    INDX = INDX + 1.
+     SORTS->SET_POSITION( COLUMNNAME = TSORTS_STRU-COLUMNNAME
+                         POSITION = INDX ).
+  ENDLOOP.
+
+  ALV_GRID1->REFRESH( REFRESH_MODE = 2 ).
+
+ ENDMETHOD.
+
+
+ENDCLASS.
+
+*************************************************
+*************************************************
+
+START-OF-SELECTION.
+
+************************************************************
+FUNC-SIGN = 'I'.
+FUNC-OPTION = 'EQ'.
+
+FUNC-LOW = '&LOAD'.
+APPEND FUNC.
+
+FUNC-LOW = '&COL0'.
+APPEND FUNC.
+
+FUNC-LOW = '&FILTER'.
+APPEND FUNC.
+
+FUNC-LOW = '&SORT_ASC'.
+APPEND FUNC.
+
+FUNC-LOW = '&SORT_DSC'.
+APPEND FUNC.
+
+************************************************************
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+
+* MOVE-CORRESPONDING SALES_STRU TO SALES_TAB.
+ COLLECT SALES_STRU INTO SALES_TAB.
+
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+ SALES_STRU-SRL_NO = SY-TABIX.
+ MODIFY SALES_TAB FROM SALES_STRU.
+ENDLOOP.
+
+CALL SCREEN 100.
+
+*********************************************
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+*  SET PF-STATUS 'xxxxxxxx'.
+
+SET TITLEBAR 'TITLE1' WITH CCODE BUTXT WAERS.
+
+CREATE OBJECT CCONT
+  EXPORTING
+    CONTAINER_NAME              = 'CUST_CONTT'.
+
+TRY.
+
+  CALL METHOD CL_SALV_TABLE=>FACTORY
+   EXPORTING
+    R_CONTAINER       = CCONT
+    LIST_DISPLAY      = '' " else run time error
+   IMPORTING
+    R_SALV_TABLE      = ALV_GRID1
+   CHANGING
+    T_TABLE           = SALES_TAB[].
+
+  CATCH CX_SALV_MSG INTO ERROR.
+  CALL METHOD LCLASS=>SALV_ERROR_MSG
+   EXPORTING
+    ERROR = ERROR.
+
+ENDTRY.
+
+******* optimize column width********
+
+ COLUMNS = ALV_GRID1->GET_COLUMNS( ).
+ COLUMNS->SET_OPTIMIZE( VALUE = 'X' ).
+
+**** color to columns
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'KUNNR').
+ COLUMN->SET_EDIT_MASK( VALUE = ' ' ).
+ COL_STRU-COL = 1.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'NAME1').
+
+ COLUMN->SET_LOWERCASE( VALUE = 'X' ).
+
+ COL_STRU-COL = 2.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'ORT01').
+ COLUMN->SET_LOWERCASE( VALUE = 'X' ).
+
+ COL_STRU-COL = 3.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'NETWR').
+ COL_STRU-COL = 4.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'KURRF' ).
+ COLUMN->SET_TECHNICAL( VALUE = 'X' ).
+
+**** aggregation settings *****
+
+ AGGS = ALV_GRID1->GET_AGGREGATIONS( ).
+
+ AGG = AGGS->ADD_AGGREGATION( COLUMNNAME = 'NETWR' AGGREGATION = 1 ).
+
+ AGGS->SET_AGGREGATION_ALLOWED( COLUMNNAME = 'SRL_NO' VALUE = ' ' ).
+
+************ enable all(full) default functions *********
+
+FUNCTIONS = ALV_GRID1->GET_FUNCTIONS( ).
+*FUNCTIONS->SET_DEFAULT( ).
+FUNCTIONS->SET_ALL( ). "DEFAULT( ).
+
+FUNCTIONS->SET_LAYOUT_CHANGE( 'X' ).
+FUNCTIONS->SET_LAYOUT_MAINTAIN( 'X' ).
+FUNCTIONS->SET_LAYOUT_SAVE( 'X' ).
+
+******* add own functions (NAME is function code) ********
+
+ICN  = ICON_PDIR_BACK. " icon name
+TXT  = 'Back'(001).    " icon text
+TTIP = 'Back'(001).    " tool tip
+
+FUNCTIONS->ADD_FUNCTION( NAME = 'BACK' ICON = ICN
+ TEXT = TXT TOOLTIP = TTIP
+ POSITION =  IF_SALV_C_FUNCTION_POSITION=>RIGHT_OF_SALV_FUNCTIONS ).
+
+***** layout settings *****
+
+LAYOUT_REF = ALV_GRID1->GET_LAYOUT( ).
+LAYOUT_KEY-REPORT = 'YCL_CH13_02_SALV_EVENTS'.
+
+LAYOUT_REF->SET_KEY( LAYOUT_KEY ).
+LAYOUT_REF->SET_SAVE_RESTRICTION( '1' ).
+
+
+***** register event handler methods *****
+
+ EVENT_REF = ALV_GRID1->GET_EVENT( ).
+ SET HANDLER LCLASS=>ON_EXIT FOR EVENT_REF.
+
+ CREATE OBJECT LCLASS_REF.
+ SET HANDLER LCLASS_REF->DB_CLICK FOR EVENT_REF.
+
+ SET HANDLER LCLASS_REF->AF_FN FOR EVENT_REF.
+
+ ALV_GRID1->DISPLAY( ).
+
+ LCLASS_REF->AF_FN( ).
+
+ COLUMNS->SET_OPTIMIZE( VALUE = 'X' ).
+
+ ALV_GRID1->REFRESH( REFRESH_MODE = 2 ).
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+
+ENDMODULE.                 " USER_COMMAND_0100  INPUT

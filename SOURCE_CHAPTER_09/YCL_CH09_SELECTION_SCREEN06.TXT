@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN06
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN06.
+
+***************************************************
+* Demo AT SELECTION-SCREEN ON BLOCK <block name> **
+***************************************************
+
+DATA: KEY_KUNNR   TYPE KUNNR.
+
+PARAMETERS: NAME1 TYPE KNA1-NAME1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME.
+
+PARAMETERS: KUNNR TYPE  RF02D-KUNNR, " combination of these two fields
+            BUKRS TYPE  RF02D-BUKRS. " checked for in the table KNB1
+
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLK2 WITH FRAME.
+
+PARAMETERS: STRAS TYPE KNA1-STRAS,
+            ORT01 TYPE KNA1-ORT01.
+
+SELECTION-SCREEN END OF BLOCK BLK2.
+
+*****************************************
+AT SELECTION-SCREEN ON BLOCK BLK1.
+
+ KEY_KUNNR = KUNNR+6(10). " adjust for KUNNR length being 16
+
+  SELECT SINGLE KUNNR BUKRS FROM KNB1 INTO (KUNNR, BUKRS)
+     WHERE KUNNR = KEY_KUNNR AND BUKRS = BUKRS.
+
+  IF SY-SUBRC <> 0.
+    MESSAGE E014(YCL_CH07_MCLASS01) WITH KUNNR BUKRS.
+  ENDIF.

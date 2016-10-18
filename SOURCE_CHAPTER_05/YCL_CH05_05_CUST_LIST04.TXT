@@ -1,0 +1,63 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH05_05_CUST_LIST04
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH05_05_CUST_LIST04 LINE-SIZE 140 LINE-COUNT 60(3)
+       NO STANDARD PAGE HEADING.
+
+*************************************************************
+* Simple Customer List - NON STANDARD PAGE HEADER & FOOTER **
+*************************************************************
+
+DATA: BEGIN OF CUST_STRU,
+       KUNNR LIKE KNA1-KUNNR,
+       NAME1 LIKE KNA1-NAME1,
+       STRAS LIKE KNA1-STRAS,
+       ORT01 LIKE KNA1-ORT01,
+       PSTLZ LIKE KNA1-PSTLZ,
+      END OF CUST_STRU,
+      DATE_CHR(10) TYPE C,
+      NXT_PAGE(3)  TYPE N, "to store next page, increment current page
+
+      FLAG(1)      TYPE C. "initially this will be blank
+                           "on exiting SELECT.. ENDSELECT loop
+                           "you are assigning it a non-blank value
+                           "footer will be outputted on the
+                           "condition FLAG = ‘ ‘
+
+
+***********************************************************************
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001, DATE_CHR, 130 TEXT-002, 137(3) SY-PAGNO.
+SKIP 1.
+WRITE:/5(135) SY-ULINE.
+WRITE:/6 TEXT-003, 12 TEXT-004, 23 TEXT-005, 60 TEXT-006, 96
+ TEXT-007, 130 TEXT-008.
+WRITE:/6 TEXT-009, 13 TEXT-010, 131 TEXT-010.
+WRITE:/5(135) SY-ULINE.
+
+****************************************************************
+END-OF-PAGE.
+IF FLAG = ' '.   " footer outputted conditionally on FLAG = ' '.
+ NXT_PAGE = SY-PAGNO + 1.
+ SKIP 1.
+ WRITE:/60 TEXT-011,(3) NXT_PAGE.
+ENDIF.
+****************************************************************
+
+START-OF-SELECTION.
+
+CONCATENATE SY-DATUM+6(2) '/' SY-DATUM+4(2) '/' SY-DATUM+0(4)
+ INTO DATE_CHR.
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO CUST_STRU UP TO 51 ROWS.
+ WRITE:/5(5) SY-DBCNT, CUST_STRU-KUNNR USING NO EDIT MASK,
+  CUST_STRU-NAME1, CUST_STRU-STRAS, CUST_STRU-ORT01, CUST_STRU-PSTLZ.
+ENDSELECT.
+
+FLAG = 'X'. " control will jump to END-OF-PAGE after executing this
+            " statement

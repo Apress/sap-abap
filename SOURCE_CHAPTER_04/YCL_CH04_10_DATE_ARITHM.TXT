@@ -1,0 +1,90 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_10_DATE_ARITHM
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_10_DATE_ARITHM.
+
+********************
+* Date Arithmetic **
+********************
+*****************************************************
+* input of two dates DATE1 DATE2 through           **
+* PARAMETERS statement (special data object)       **
+* the DEFAULT clause with PARAMETERS assigns       **
+* starting value to the prompt variables just like **
+* VALUE for data objects in DATA statement         **
+*                                                  **
+* input of DAYS (TYPE I)                           **
+*                                                  **
+* calculate & output difference between DATE1,DATE2**
+* calculate & output date by adding DAYS to DATE2  **
+* calculate & output the last day of month of DATE1**
+*                                                  **
+* bit of jugglary code to calculate last day of    **
+* month. you are first deriving the date as of     **
+* first day of next month, next subtracting 1 from **
+* that date. (there would be better ways)          **
+*                                                  **
+* the IF statement has not been introduced, but    **
+* should not be a problem                          **
+*                                                  **
+* VAR is TYPE I, outputs in 11 columns by default. **
+* (5) sigifies the output must appear in 5 columns **
+*                                                  **
+* when you output TYPE D data objects, you are     **
+* specifying the clause DD/MM/YYYY for separator.  **
+* you are not able to output separator of your     **
+* choice. the period (.) as separatr is appearing  **
+* from global setting / master record              **
+*****************************************************
+*****************************************************
+* when you press F8 system will prompt for input   **
+* DATE1, DATE2, DAYS. when you finished with input **
+* press F8 again to obtain output.                 **
+* press F3 to return from output to input screen   **
+* press F3 to return from input screen to program  **
+*****************************************************
+
+DATA: VAR      TYPE I,
+      DATE     TYPE D,
+      YEAR(4)  TYPE N,
+      MONTH(2) TYPE N,
+      DAY(2)   TYPE N.
+PARAMETERS: DATE1   TYPE D DEFAULT '20131025',
+            DATE2   TYPE D DEFAULT '20121125',
+            DAYS    TYPE I DEFAULT 100.
+
+*************************************************
+VAR = DATE1 - DATE2. "difference between DATE1,DATE2
+
+WRITE:/5 'Diff. between Dates:', DATE1 DD/MM/YYYY,
+         DATE2 DD/MM/YYYY, '=', (5) VAR.
+
+DATE = DATE2 + DAYS. "the date ahead/behind of DATE2 by DAYS
+
+WRITE:/5 DATE2 DD/MM/YYYY, '+', (5) DAYS, '=', DATE DD/MM/YYYY.
+
+YEAR  = DATE1+0(4). "offset & length used
+MONTH = DATE1+4(2).
+
+IF MONTH < 12.
+ MONTH = MONTH + 1.
+ELSE.
+ MONTH = 1.
+ YEAR = YEAR + 1.
+ENDIF.
+
+DATE+0(4) = YEAR. "get to first day of next month
+DATE+4(2) = MONTH.
+DATE+6(2) = '01'.
+
+DATE = DATE - 1. "subtract 1 from first day of next month
+                  "for last day of month
+
+DAY = DATE+6(2).
+
+WRITE:/5 'Last day of month date', DATE1 DD/MM/YYYY, '=', DAY.

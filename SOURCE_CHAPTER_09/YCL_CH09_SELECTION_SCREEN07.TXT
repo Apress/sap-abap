@@ -1,0 +1,47 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN07
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  YCL_CH09_SELECTION_SCREEN07.
+
+*****************************************************
+* multiple & complex selections with SELECT-OPTIONS *
+*****************************************************
+
+DATA: CUST_TAB TYPE STANDARD TABLE OF YCL_CH05_CUST_STRU
+       WITH HEADER LINE.
+
+SELECT-OPTIONS: CUST_CD1 FOR CUST_TAB-KUNNR.
+
+********************************************************
+START-OF-SELECTION.
+
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO
+ TABLE CUST_TAB
+ WHERE KUNNR IN CUST_CD1.
+
+*SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO
+*  TABLE CUST_TAB
+*  WHERE    ( KUNNR = '0000000255'
+*          OR KUNNR = '0000000260'
+*          OR KUNNR = '0000000470'
+*          OR ( KUNNR  BETWEEN '0000001001' AND '0000007000' )
+*          OR ( KUNNR  BETWEEN '0000300001' AND '0000399999' ) )
+*     AND NOT ( KUNNR  BETWEEN '0000003201' AND '0000003300' )
+*     AND NOT ( KUNNR = '0000001031' ).
+
+*SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO
+*  TABLE CUST_TAB
+*  WHERE NOT ( KUNNR  BETWEEN '0000003201' AND '0000003300' )
+*     AND NOT ( KUNNR = '0000001031' ).
+
+
+SORT CUST_TAB BY KUNNR.
+
+LOOP AT CUST_TAB.
+ WRITE:/5(5) SY-TABIX, CUST_TAB-KUNNR USING NO EDIT MASK, CUST_TAB-NAME1.
+ENDLOOP.

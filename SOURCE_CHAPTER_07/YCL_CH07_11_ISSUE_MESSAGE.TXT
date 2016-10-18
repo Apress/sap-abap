@@ -1,0 +1,34 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_11_ISSUE_MESSAGE
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_11_ISSUE_MESSAGE MESSAGE-ID YCL_CH07_MCLASS01.
+
+********************************
+* Demonstrate Issuing Messages *
+********************************
+
+DATA:  KUNNR TYPE KNA1-KUNNR.
+
+PARAMETERS: CUST_CD TYPE KNA1-KUNNR.
+
+******************************************
+START-OF-SELECTION.
+
+SELECT SINGLE KUNNR FROM KNA1 INTO KUNNR
+  WHERE KUNNR = CUST_CD.
+
+IF CUST_CD IS INITIAL.
+ MESSAGE S002(YCL_CH07_MCLASS01) DISPLAY LIKE 'E'.
+
+ELSEIF SY-SUBRC = 0.
+ MESSAGE S000(YCL_CH07_MCLASS01) WITH CUST_CD.
+
+ELSE.
+ MESSAGE S001 WITH CUST_CD DISPLAY LIKE 'E'.
+
+ENDIF.

@@ -1,0 +1,117 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB14
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB14 LINE-SIZE 120 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+*********************************************************
+* Internal Tables Control Totals For Two Level Summary **
+*********************************************************
+************************************************************
+* declare table structure. ensure the control fields      **
+* are in the beginning of structure. the order of these   **
+* fields should be same as control order KUNNR MATNR      **
+* declare table & other variables                         **
+*                                                         **
+* input company code - PARAMETERS                         **
+*                                                         **
+* load internal table with data from the view. set up     **
+* LOOP...ENDLOOP. for each row convert amount NETWR       **
+* to the operating currency of company code. make KURRF   **
+* = 0 to prevent overflow. update in the table MODIFY etc.**
+*                                                         **
+* sort table on fields of control levels i.e. KUNNR MATNR **
+*                                                         **
+* set up LOOP...ENDLOOP.. set up control levels           **
+* AT NEW KUNNR, AT END OF MATNR, AT END OF KUNNR, AT LAST **
+* as per output format. output appropriate info in each   **
+* these control levels as per output format               **
+************************************************************
+
+DATA:  BEGIN OF SALES_SUM_STRU,
+        KUNNR   TYPE KNA1-KUNNR, " I level of control
+        MATNR   TYPE VBRP-MATNR, " II level of control
+        NAME1   TYPE KNA1-NAME1,
+        MAKTX   TYPE MAKT-MAKTX,
+        NETWR   TYPE VBRP-NETWR,
+        KURRF   TYPE VBRK-KURRF,
+       END OF SALES_SUM_STRU,
+
+       SALES_SUM_TAB LIKE STANDARD TABLE OF SALES_SUM_STRU,
+
+        NAME1   TYPE KNA1-NAME1,
+        MAKTX   TYPE MAKT-MAKTX,
+        STR(50) TYPE C,
+        BUTXT   TYPE T001-BUTXT,
+        WAERS   TYPE T001-WAERS.
+**************************************************************
+PARAMETERS CMP_CD   TYPE VBRK-BUKRS VALUE CHECK DEFAULT 3000.
+
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, CMP_CD NO-GAP, '/' NO-GAP, BUTXT, 81(3) SY-PAGNO.
+WRITE:/46 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(79) SY-ULINE.
+WRITE:/9 TEXT-003, 29 TEXT-004, 78 TEXT-005.
+WRITE:/5(79) SY-ULINE.
+
+**************************************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CMP_CD.
+
+SELECT KUNNR MATNR NAME1 MAKTX NETWR KURRF FROM
+       YCL_CH06_CM_SALE
+       INTO TABLE SALES_SUM_TAB WHERE BUKRS = CMP_CD.
+
+** convert amount NETWR to company code currency
+************************************************
+LOOP AT SALES_SUM_TAB INTO SALES_SUM_STRU.
+ SALES_SUM_STRU-NETWR = SALES_SUM_STRU-NETWR * SALES_SUM_STRU-KURRF.
+ SALES_SUM_STRU-KURRF = 0.
+ MODIFY SALES_SUM_TAB FROM SALES_SUM_STRU.
+ENDLOOP.
+
+SORT SALES_SUM_TAB BY KUNNR MATNR. " sort in order of control levels
+
+** loop to generate customer, material summary
+**********************************************
+LOOP AT SALES_SUM_TAB INTO SALES_SUM_STRU.
+
+ NAME1 = SALES_SUM_STRU-NAME1.
+
+ AT NEW KUNNR. " first row of new value of KUNNR fetched
+  SKIP 1.
+  FORMAT INVERSE ON COLOR COL_POSITIVE.
+  CONCATENATE SALES_SUM_STRU-KUNNR NAME1 INTO STR SEPARATED BY '/'.
+  WRITE:/5 TEXT-006, STR.
+ ENDAT.
+
+ MAKTX = SALES_SUM_STRU-MAKTX.
+
+ AT END OF MATNR. " all rows of particular value of KUNNR & MATNR fetched
+  SUM.
+  FORMAT INVERSE ON COLOR COL_GROUP.
+  WRITE:/8 SALES_SUM_STRU-MATNR USING NO EDIT MASK, MAKTX,
+        (16) SALES_SUM_STRU-NETWR.
+ ENDAT.
+
+ AT END OF KUNNR. " all rows of particular value of KUNNR fetched
+  SUM.
+  FORMAT INVERSE ON COLOR COL_POSITIVE.
+  WRITE:/85(16) SALES_SUM_STRU-NETWR.
+ ENDAT.
+
+ AT LAST. "all rows in internal table fetched
+  SUM.
+  FORMAT INVERSE ON COLOR COL_TOTAL.
+  WRITE:/102(16) SALES_SUM_STRU-NETWR.
+ ENDAT.
+
+ENDLOOP.

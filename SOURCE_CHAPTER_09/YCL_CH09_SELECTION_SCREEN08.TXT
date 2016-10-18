@@ -1,0 +1,82 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN08
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN08 NO STANDARD PAGE HEADING
+          LINE-SIZE 120 LINE-COUNT 60.
+
+*************************************************
+* Demo SELECT-OPTIONS: Customer Sales Summary  **
+*************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+      TOTAL      TYPE VBRK-NETWR,
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS,
+      BUTXTS     TYPE STRING.
+
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000 VALUE CHECK.
+
+SELECT-OPTIONS CUST_CD1 FOR SALES_STRU-KUNNR.
+                                        " data object/field after key word
+                                        " FOR has to be a local data object
+
+********************************************
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS, 102 TEXT-003,
+         107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU
+
+  WHERE BUKRS = CCODE
+        AND KUNNR IN CUST_CD1. " IN operator with SELECT-OPTIONS
+                               " variable
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+LOOP AT CUST_CD1.
+
+ WRITE:/5(2) SY-TABIX, CUST_CD1-SIGN, CUST_CD1-OPTION, CUST_CD1-LOW,
+  CUST_CD1-HIGH.
+
+ENDLOOP.
+
+SKIP 4. " a gap of 4 lines between CUST_CD1 data &
+        " customer data.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+
+ WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+  SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+ TOTAL = TOTAL + SALES_STRU-NETWR.
+
+ENDLOOP.
+
+SKIP 1.
+WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.

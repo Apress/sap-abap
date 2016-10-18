@@ -1,0 +1,44 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_08_TEST_CONV_ROUT01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_08_TEST_CONV_ROUT01.
+
+DATA STRING10(10)  TYPE C.
+**************************************************
+* Function modules CONVERSION_EXIT_ALPHA_INPUT  **
+*                  CONVERSION_EXIT_ALPHA_OUTPUT **
+*                  in action                    **
+**************************************************
+
+********************************************************
+* input: PARAMETERS: CUST_CD TYPE KUNNR               **
+* assign CUST_CD to STRING10 (TYPE C length 10)       **
+*                                                     **
+* output CUST_CD,                                     **
+*        CUST_CD USING NO EDIT MASK                   **
+*        STRING10                                     **
+*        STRING10 USING EDIT MASK                     **
+********************************************************
+
+PARAMETERS: CUST_CD  TYPE KUNNR.
+
+START-OF-SELECTION.
+
+STRING10 = CUST_CD.
+
+WRITE: /5 'CUST_CD                        :', CUST_CD,
+                                           "output without leading zeroes
+       /5 'CUST_CD (USING NO EDIT MASK)   :', CUST_CD USING NO EDIT MASK.
+                                           "output with leading zeroes
+SKIP 2.
+
+WRITE: /5 'STRING10                       :', STRING10,
+                                           "output with leading zeroes
+       /5 'STRING10 (USING EDIT MASK)     :', STRING10 USING
+            EDIT MASK '==ALPHA'.
+                                           "output without leading zeroes

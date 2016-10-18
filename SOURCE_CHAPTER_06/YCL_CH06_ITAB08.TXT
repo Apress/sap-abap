@@ -1,0 +1,124 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB08
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB08 LINE-SIZE 135 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+****************************************************************
+* List of Billing Docs of a Specified Company Code with Total **
+* Using Two Internal Tables                                   **
+****************************************************************
+*******************************************************************
+* declare 2 structures & internal tables:(1)loading data from VBRK**
+* (2) loading data from KNA1                                     **
+*                                                                **
+* PARAMETERS CCODE TYPE VBRK-BUKRS VALUE CHECK DEFAULT 3000      **
+* to select company code                                         **
+*                                                                **
+* get BUTXT WAERS from T001 - SELECT SINGLE etc.                 **
+*                                                                **
+* load internal table <iatb1> from the VBRK                      **
+*  SELECT <fields> from VBRK INTO TABLE <itab1>                  **
+*       WHERE BUKRS = CCODE.                                     **
+*                                                                **
+* load internal table <iatb2> from the KNA1                      **
+*  SELECT <fields> from KNA1 INTO TABLE <itab2>.                 **
+*                                                                **
+*  set LOOP AT <itab> into <itab>.                               **
+*       calculate amount in operating currency of chosen CCODE   **
+*                                                                **
+*       Retrieve NAME1, ORT01 from <itab2> by READ.. WITH KEY..  **
+*        from second internal table <itan2>                      **
+*       increment SRL_NO (serial no)                             **
+*       WRITE...                                                 **
+*       build total                                              **
+*      ENDLOOP.                                                  **
+*                                                                **
+*  output total                                                  **
+*                                                                **
+*******************************************************************
+TABLES: T001.
+
+DATA: BEGIN OF BILL_DOCS_STRU,
+       VBELN  TYPE VBRK-VBELN,
+       FKDAT  TYPE VBRK-FKDAT,
+       KUNAG  TYPE VBRK-KUNAG,
+       NETWR  TYPE VBRK-NETWR,
+       KURRF  TYPE VBRK-KURRF,
+      END OF BILL_DOCS_STRU,
+
+      BILL_DOCS_TAB LIKE STANDARD TABLE OF BILL_DOCS_STRU,
+
+      BEGIN OF CUST_INFO_STRU,
+       KUNNR  TYPE KNA1-KUNNR,
+       NAME1  TYPE KNA1-NAME1,
+       ORT01  TYPE KNA1-ORT01,
+      END OF CUST_INFO_STRU,
+
+      CUST_INFO_TAB LIKE HASHED TABLE OF CUST_INFO_STRU
+        WITH UNIQUE KEY KUNNR,
+
+      STRNG     TYPE STRING,
+      SRL_NO    TYPE SY-TABIX,
+      TOTAL     TYPE VBRK-NETWR.
+
+PARAMETERS CCODE  TYPE VBRK-BUKRS DEFAULT 3000 VALUE CHECK.
+*********************************************************************
+TOP-OF-PAGE.
+
+WRITE :/5 STRNG, 129(3) SY-PAGNO.
+
+SKIP 1.
+WRITE:/5(127) SY-ULINE.
+WRITE:/5 TEXT-003,11 TEXT-004, 22 TEXT-005, 33 TEXT-006, 46 TEXT-007,
+         83 TEXT-008, 126 TEXT-009.
+
+WRITE:/6 TEXT-010, 35 TEXT-011.
+WRITE:/5(127) SY-ULINE.
+
+***********************************************************************
+START-OF-SELECTION.
+
+
+SELECT SINGLE * FROM T001 WHERE BUKRS = CCODE.
+
+CONCATENATE TEXT-001 CCODE '/' T001-BUTXT TEXT-002 T001-WAERS INTO STRNG.
+
+SELECT VBELN FKDAT KUNAG NETWR KURRF FROM
+  VBRK INTO
+  TABLE BILL_DOCS_TAB
+  WHERE BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 FROM
+  KNA1 INTO
+  TABLE CUST_INFO_TAB.
+********************************************************************
+SORT BILL_DOCS_TAB BY VBELN. "default is ASCENDING
+
+LOOP AT BILL_DOCS_TAB INTO BILL_DOCS_STRU.
+
+ BILL_DOCS_STRU-NETWR = BILL_DOCS_STRU-NETWR * BILL_DOCS_STRU-KURRF.
+
+ READ TABLE CUST_INFO_TAB WITH KEY KUNNR = BILL_DOCS_STRU-KUNAG
+   INTO CUST_INFO_STRU. " the READ operation will set SY-TABIX to zero
+
+ SRL_NO = SRL_NO + 1.
+
+ WRITE:/5(5) SRL_NO, BILL_DOCS_STRU-VBELN, BILL_DOCS_STRU-FKDAT,
+             BILL_DOCS_STRU-KUNAG, CUST_INFO_STRU-NAME1,
+             CUST_INFO_STRU-ORT01, (17) BILL_DOCS_STRU-NETWR.
+
+ TOTAL = TOTAL + BILL_DOCS_STRU-NETWR.
+
+ENDLOOP.
+********************************
+
+END-OF-SELECTION.
+SKIP 1.
+
+WRITE: /(17) TOTAL UNDER BILL_DOCS_STRU-NETWR.

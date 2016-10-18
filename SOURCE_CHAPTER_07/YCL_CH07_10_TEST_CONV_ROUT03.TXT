@@ -1,0 +1,29 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_10_TEST_CONV_ROUT03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_10_TEST_CONV_ROUT03.
+
+**************************************
+* Test CONVERSION_EXIT_ICOMA_OUTPUT **
+**************************************
+DATA: AMMT LIKE VBRK-NETWR VALUE '120000'.
+
+PARAMETERS: AMT1 TYPE YCL_CH06_ICOMMA_DE
+ DEFAULT '123456789.90'.
+
+PARAMETERS: AMT2(6) TYPE P DECIMALS 2
+ DEFAULT '123456789.90'.
+
+*******************************************************
+START-OF-SELECTION.
+
+WRITE:/5 '12345678901234567890'.
+
+WRITE: /5 AMT1 USING NO EDIT MASK.
+WRITE: /5(15) AMT2 USING EDIT MASK '==ICOMA'.
+WRITE:/5(15) AMMT USING EDIT MASK '==ICOMA'.

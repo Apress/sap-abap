@@ -1,0 +1,101 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_06_AGGREGATE_FUNC_VR2
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_06_AGGREGATE_FUNC_VR2 NO STANDARD PAGE HEADING
+       LINE-SIZE 120 LINE-COUNT 60.
+
+************************************************
+* SELECT Statement with Aggregate Functions   **
+* same as program CL_CH08_05_AGGREGATE_FUNC   **
+* except: no aliases used for aggregate fields**
+*         destination is an internal table    **
+************************************************
+**************************************************************
+* SELECT statement aggregate functions to get summarized    **
+* data.                                                     **
+*                                                           **
+* a clarification:- the open sql aggregte functions do      **
+* not support expressions. we cannot write                  **
+* SUM( NETWR * KURRF ) i.e. sum of                          **
+* (amount in document currency multiplied by exchange rate) **
+*                                                           **
+* practically speaking, the open sql aggregate feature      **
+* cannot be used for amount summarization. unless we write  **
+* to an intermediate database table the result of amount    **
+* multiplied by the exchange rate and use this intermediate **
+* table in open sql statement with aggregate functions for  **
+* amount fields like NETWR.                                 **
+*                                                           **
+* the aggregate functions though can be used for quantity   **
+* fields. because we are assured that quantities are mostly **
+* sold in one specific unit of measure for a material code, **
+* purchased in another specific unit of measure for a       **
+* material code. (of specific organizational unit)          **
+*                                                           **
+* the current hand-on, is summarization of material wise    **
+* quantities sold                                           **
+* your basic Source of data is the table VBRP. for material **
+* description, you need to access table MAKT. so you are    **
+* usimg the view YCL_CH08_VBRP_MK created with the tables   **
+* VBRP, MAKT.                                               **
+**************************************************************
+**************************************************************
+* declare TYPES. declare data. code for heading.            **
+* use SELECT statement with aggregate functions SUM( ),     **
+* MAX( ), MIN( ), COUNT( * ) to retrieve and store for a    **
+* material code total quantity sold, maximum quantity sold  **
+* at a time, minimum sold at a time, number of times sold   **
+* into an internal table.                                   **
+* output from internal table i.e. LOOP AT...WRITE...ENDLOOP **
+**************************************************************
+
+TYPES:  BEGIN OF SALES_STRU_TYPE,
+         MATNR    TYPE MATNR,
+         MAKTX    TYPE MAKTX,
+         VRKME    TYPE VRKME,
+         CONT     TYPE I,
+         TOTAL    TYPE FKIMG,
+         MAX      TYPE FKIMG,
+         MIN      TYPE FKIMG,
+        END OF SALES_STRU_TYPE.
+
+DATA: SALES_TAB TYPE STANDARD TABLE OF SALES_STRU_TYPE
+       WITH HEADER LINE.
+*******************************************
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, 115(3) SY-PAGNO.
+SKIP 1.
+WRITE:/5(112) SY-ULINE.
+WRITE:/5 TEXT-002, 10 TEXT-003, 30 TEXT-004,
+         70 TEXT-005, 74 TEXT-006, 82 TEXT-007,
+         96 TEXT-008, 109 TEXT-009.
+
+WRITE:/6 TEXT-010.
+
+WRITE:/5(112) SY-ULINE.
+
+*******************************************
+START-OF-SELECTION.
+
+SELECT MATNR MAKTX VRKME COUNT( * ) AS CONT SUM( FKIMG ) AS TOTAL
+      MAX( FKIMG ) AS MAX MIN( FKIMG ) AS MIN FROM YCL_CH08_VBRP_MK
+      APPENDING TABLE SALES_TAB PACKAGE SIZE 50 " destination is internal table
+      GROUP BY MATNR MAKTX VRKME HAVING SUM( FKIMG ) <> 0.
+
+ENDSELECT.
+
+SORT SALES_TAB BY MATNR. " no 'ORDER BY' in SELECT statement
+
+LOOP AT SALES_TAB.
+
+ WRITE:/5(4) SY-TABIX, SALES_TAB-MATNR USING NO EDIT MASK, SALES_TAB-MAKTX,
+   SALES_TAB-VRKME, (5) SALES_TAB-CONT, (12) SALES_TAB-TOTAL,
+   (12) SALES_TAB-MAX, (12) SALES_TAB-MIN.
+
+
+ENDLOOP.

@@ -1,0 +1,31 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_16_READ_INDEX_ASSIGN
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_16_READ_INDEX_ASSIGN.
+
+**********************************************************
+* Use ASSIGNING <Field Symbol> Notation In READ INDEX   **
+* (Access a Row In Internal Table With Provided Row No.)**
+**********************************************************
+
+DATA: CUST_TAB   TYPE STANDARD TABLE OF YCL_CH05_CUST_STRU.
+
+PARAMETERS ROW_NO(5)   TYPE N DEFAULT 100.
+
+FIELD-SYMBOLS: <FS1> LIKE LINE OF CUST_TAB.
+
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO TABLE CUST_TAB.
+
+READ TABLE CUST_TAB INDEX ROW_NO ASSIGNING <FS1>.
+
+IF SY-SUBRC = 0.
+
+ WRITE:/5(4) SY-TABIX, <FS1>-KUNNR USING NO EDIT MASK, <FS1>-NAME1.
+ELSE.
+ WRITE:/5 'Error Reading Row No.', ROW_NO.
+ENDIF.

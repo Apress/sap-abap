@@ -1,0 +1,71 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_10_TEST_CBE_IN_SUBR
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_10_TEST_CBE_IN_SUBR.
+
+
+*********************************************
+* Test Class Based Exception In Subroutine **
+*********************************************
+DATA: TABA    TYPE STRING_TABLE,
+      RESULT  TYPE STRING,
+      ERR_REF TYPE REF TO YCX_YCL_CH11_EXCEPTIONS2,
+      ETEXT   TYPE STRING.
+
+*********************************************
+PARAMETERS: LOAD_DAT(1)   TYPE C DEFAULT 'X'.
+
+*********************************************
+START-OF-SELECTION.
+
+IF LOAD_DAT = 'X'.
+
+ SELECT LTX FROM T247 INTO TABLE TABA
+   WHERE SPRAS = SY-LANGU.
+ENDIF.
+
+TRY.
+
+PERFORM CONCATENATER TABLES TABA USING RESULT.
+
+WRITE:/5 RESULT. " non-error process
+
+CATCH YCX_YCL_CH11_EXCEPTIONS2 INTO ERR_REF.
+ETEXT = ERR_REF->IF_MESSAGE~GET_TEXT( ).
+
+REPLACE ALL OCCURRENCES OF '&' IN ETEXT WITH ''.
+  " removing the ampersands from message class text
+
+MESSAGE ETEXT TYPE 'S' DISPLAY LIKE 'E'.
+
+ENDTRY.
+
+*********************************************
+FORM CONCATENATER TABLES STR_TAB USING RESULT
+  RAISING YCX_YCL_CH11_EXCEPTIONS2.
+ " exception/s to be specified in subroutine interface
+
+DATA: STR TYPE  LINE OF STRING_TABLE.
+
+ DESCRIBE TABLE STR_TAB.
+
+ IF SY-TFILL = 0.
+  RAISE EXCEPTION TYPE YCX_YCL_CH11_EXCEPTIONS2
+   EXPORTING
+   TEXTID = YCX_YCL_CH11_EXCEPTIONS2=>REPORT_NO_DATA
+   DATA_OBJECT = 'TABA'.
+  ENDIF.
+
+  LOOP AT STR_TAB INTO STR.
+   IF SY-TABIX = 1.
+    RESULT = STR.
+   ELSE.
+    CONCATENATE RESULT STR INTO RESULT SEPARATED BY ' '.
+   ENDIF.
+  ENDLOOP.
+ENDFORM.

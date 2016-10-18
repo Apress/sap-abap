@@ -1,0 +1,53 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_09_TEST_CONV_ROUT02
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  YCL_CH07_09_TEST_CONV_ROUT02.
+
+***************************************
+* TEST CONVERSION_EXIT_ICOMMA_OUTPUT **
+***************************************
+
+*******************************************************
+* input a TYPE P figure AMT - max:999,999,999.99     **
+*                                                    **
+* call function module: CONVERSION_EXIT_ICOMA_OUTPUT **
+* IMPORTING INPUT = AMT EXPORTING OUTPUT = DEST      **
+*(own conversion routine being called explicitly)    **
+*                                                    **
+* it will return the amount with commas in crore &   **
+* lac positions instead of million & billion in DEST.**
+* DEST should be a TYPE C length 15 variable         **
+*                                                    **
+* Output DEST                                        **
+*******************************************************
+DATA: DEST(16) TYPE C.
+PARAMETERS: AMT(7) TYPE P DECIMALS 2 DEFAULT '123456789.90'.
+
+START-OF-SELECTION.
+
+CALL FUNCTION 'CONVERSION_EXIT_ICOMA_OUTPUT'
+ EXPORTING
+   INPUT                            = AMT
+ IMPORTING
+   OUTPUT                           = DEST
+ EXCEPTIONS
+   NUMBER_NOT_TYPE_P                 = 1
+   NUMBER_OUT_OF_RANGE               = 2
+   RETURN_STR_NOT_TYPE_C             = 3
+   RETURN_STR_NOT_LENGTH_SHORT       = 4
+   OTHERS                            = 5
+          .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+         DISPLAY LIKE 'E'.
+
+ELSE.
+ WRITE: /5 '12345678901234567890'.
+ WRITE: /5 DEST.
+ENDIF.

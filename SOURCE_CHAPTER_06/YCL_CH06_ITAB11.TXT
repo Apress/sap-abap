@@ -1,0 +1,115 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB11
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB11.
+
+*******************************************************
+* Internal Tables - MODIFY statement on Sorted Table **
+*                  (Single row)                      **
+*******************************************************
+***********************************************************
+* table T005U is a text table. it contains the state/    **
+* region/province texts of all countries. like for       **
+* example it contains the texts of all the indian states **
+* and union territories. the texts are in all the        **
+* languages supported. the primary key fields of this    **
+* table are                                              **
+*           MANDT   client code                          **
+*           SPRAS   language key code                    **
+*           LAND1   country code                         **
+*           BLAND   state/region/province code           **
+*                                                        **
+* the text field is BEZEI                                **
+*                                                        **
+* for india (LAND1 = 'IN'), language english (language   **
+* key code SPRAS = 'E'), the state code '01': the state  **
+* has been miss-spelt. it is 'Andra Pradesh' instead of  **
+* being 'Andhra Pradesh' (letter h is missing in first   **
+* word)                                                  **
+*                                                        **
+* similarly for BLAND = '26' the text is 'Andaman und    **
+* Nico.In.' instead of 'Andaman and Nico.In.' ('and' has **
+* miss-spelt as 'und'                                    **
+*                                                        **
+* you will load texts of indian states in english into a **
+* sorted internal table from database table T005U.       **
+* (WHERE SPRAS = 'E' AND LAND1 = 'IN')                   **
+* this sorted table defined key will be MANDT, SPRAS,    **
+* LAND1, BLAND                                           **
+*                                                        **
+* you will assign the structure text field:              **
+* BEZEI = 'Andhra Pradesh'                               **
+*                                                        **
+* you will issue the MODIFY statement with INDEX 1 and   **
+* TRANSPORTING BEZEI i.e. only update field BEZEI.       **
+*                                                        **
+* the system will locate the row in the internal         **
+* sorted table thru the INDEX 1 (row number 1)           **
+* it will update the field BEZEI from the value in the   **
+* structure field into the BEZEI field in the located    **
+* row.                                                   **
+* this is MODIFY with INDEX                              **
+*                                                        **
+*                                                        **
+* you will assign the structure primary key fields the   **
+* values:                                                **
+* MANDT = 800, SPRAS = 'E', LAND1 = 'IN', BLAND = '26'   **
+*                                                        **
+* you will assign the structure text field:              **
+* BEZEI = 'Andaman and Nico.In.                          **
+*                                                        **
+* you will issue the MODIFY statement with TRANSPORTING  **
+* BEZEI i.e. only update field BEZEI.                    **
+*                                                        **
+* the system will locate the row in the internal         **
+* sorted table thru the values in structure key fields   **
+* it will update the field BEZEI from the value in the   **
+* structure field into the BEZEI field in the located    **
+* row.                                                   **
+* this is MODIFY with key                                **
+*                                                        **
+*                                                        **
+* this is happening only in the internal table. no       **
+* changes are occurring in the database table T005U      **
+***********************************************************
+
+TABLES T005U.
+DATA: STATES_TAB LIKE SORTED TABLE OF T005U WITH UNIQUE KEY
+      MANDT SPRAS LAND1 BLAND.
+
+START-OF-SELECTION.
+
+SELECT * FROM T005U INTO TABLE STATES_TAB WHERE
+         SPRAS = 'E' AND LAND1 = 'IN'.
+
+WRITE:/5 'Pre MODIFY Output (Only States Starting With A)'.
+SKIP.
+LOOP AT STATES_TAB INTO T005U WHERE BEZEI CP 'A*'.
+ WRITE:/5 T005U-BLAND, T005U-BEZEI.
+ENDLOOP.
+
+*T005U-MANDT = 800.
+*T005U-SPRAS = 'E'.
+*T005U-LAND1 = 'IN'.
+*T005U-BLAND = '01'.
+T005U-BEZEI = 'Andhra Pradesh'.
+MODIFY STATES_TAB FROM T005U INDEX 1 TRANSPORTING BEZEI.
+
+T005U-MANDT = 800.
+T005U-SPRAS = 'E'.
+T005U-LAND1 = 'IN'.
+T005U-BLAND = '26'.
+T005U-BEZEI = 'Andaman and Nico.In.'.
+MODIFY TABLE STATES_TAB FROM T005U TRANSPORTING BEZEI.
+
+SKIP 3.
+WRITE:/5 'Post MODIFY Output (Only States Starting With A)'.
+SKIP.
+LOOP AT STATES_TAB INTO T005U WHERE BEZEI CP 'A*'.
+ WRITE:/5 T005U-BLAND, T005U-BEZEI.
+ENDLOOP.

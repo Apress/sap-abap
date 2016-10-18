@@ -1,0 +1,46 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_11_TRANSLATE
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_11_TRANSLATE.
+
+***************************************
+* TRANSALATE: UPPER CASE, LOWER CASE **
+***************************************
+************************************************
+* take a string input through PARAMETERS      **
+* variable ISTRING                            **
+*                                             **
+* in the PARAMETERS statement the phrase      **
+* LOWER CASE enables input in LOWER as well   **
+* as UPPER case.(case sensitivity) by default **
+* the PARAMETERS statement accepts only UPPER **
+* case i.e. even if you enter lower case it   **
+* is converted to UPPER case.                 **
+*                                             **
+* the ISTRING is assigned to OSTRING. the     **
+* TRANSALATE.. TO UPPER CASE is performed on  **
+* OSTRING. OSTRING is output                  **
+*                                             **
+* the ISTRING is assigned to OSTRING. the     **
+* TRANSALATE.. TO LOWER CASE is performed on  **
+* OSTRING. OSTRING is output                  **
+************************************************
+
+DATA: OSTRING(50)   TYPE C.
+PARAMETERS: ISTRING(50)  TYPE C LOWER CASE DEFAULT
+ 'MpHasIS - An H.p. CoMPanY'.
+
+OSTRING = ISTRING.
+TRANSLATE OSTRING TO UPPER CASE.
+
+WRITE:/5 'Original String  :',ISTRING,
+      /5 'UPPER CASE STRING:',OSTRING.
+
+OSTRING = ISTRING.
+TRANSLATE OSTRING TO LOWER CASE.
+WRITE:/5 'lower case string:',OSTRING.

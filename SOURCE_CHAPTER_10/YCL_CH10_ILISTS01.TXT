@@ -1,0 +1,48 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH10_ILISTS01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_ILISTS01.
+
+**************************************************
+* Inter Active Lists - Demo Maximum Of 21 lists **
+**************************************************
+**************************************************
+* single click (because of HOTSPOT) on primary  **
+* list will trigger event AT LINE-SELECTION and **
+* output the first secondary list.              **
+* subsequent double clickings will trigger      **
+* the event AT LINE-SELECTION and output the    **
+* respective secondary list. every clicking     **
+* increments the system field SY-LSIND          **
+*                                               **
+* you are changing the color of each secondary  **
+* list by incrementing the variable COLOUR. when**
+* all colour codes are exhausted i.e. COLOUR = 7**
+* you are initializing the variable COLOUR = 1  **
+*                                               **
+* the system field SY-LSIND is zero for the     **
+* primary list, 1,2...20 for a maximum of 20    **
+* secondary lists. if you double click on 20th  **
+* secondary list, it will result in dump error  **
+**************************************************
+DATA: COLOUR  TYPE I VALUE 1.
+
+START-OF-SELECTION.
+
+WRITE:/5 'This is a Primary List. List No.:' HOTSPOT, (2) SY-LSIND .
+
+*******************************************
+AT LINE-SELECTION.
+
+FORMAT INVERSE ON COLOR = COLOUR.
+WRITE:/10 'This is a Secondary List. List No.:', (2) SY-LSIND.
+IF COLOUR = 7.
+ COLOUR = 1.
+ELSE.
+  COLOUR = COLOUR + 1.
+ENDIF.

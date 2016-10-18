@@ -1,0 +1,158 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_07_ELEM_DATA_OBJECTS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_17_DESCRIBE_FIELD.
+
+********************************************************
+* DESCRIBE FIELD: Determine Attributes of Data objects *
+********************************************************
+
+***********************************************************************
+* declare elementary data objects referring to DDIC table fields     **
+* declare elementary data object referring to DDIC data element      **
+* declare structure data object referring to DDIC table definition   **
+* declare elementary TYPE STRING                                     **
+*                                                                    **
+* use DESCRIBE FIELD statement to determine attributes               **
+* output attributes                                                  **
+*                                                                    **
+***********************************************************************
+
+DATA: NAME1          TYPE KNA1-NAME1, "DDIC table field
+      FKDAT          TYPE VBRK-FKDAT, "DDIC table field
+      NETWR          TYPE VBRK-NETWR, "DDIC table field
+      TEXT1          TYPE TBOOKSHOP-TEXT1, "DDIC table field
+      LENGTH         TYPE TBOOKSHOP-LENGTH, "DDIC table field
+      WAERS          TYPE WAERS, "reference to data element
+      INT1           TYPE MCSAPINT1, "reference to data element
+      VBRK           TYPE VBRK, "reference to table structure
+      STRNG          TYPE STRING,
+
+      TYP(1)         TYPE C,
+      LEN            TYPE I,
+      OLEN           TYPE I,
+      DECI           TYPE I,
+      COMPO          TYPE I.
+
+**************************************************************************
+DESCRIBE FIELD NAME1 TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+ DESCRIBE FIELD NAME1 LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD NAME1 LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'KNA1-NAME1 TYPE & LENGTH                         :', TYP,
+ (3) LEN.
+*********************************************************************
+DESCRIBE FIELD FKDAT TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+ DESCRIBE FIELD FKDAT LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD FKDAT LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'VBRK-FKDAT TYPE & LENGTH                         :', TYP,
+ (3) LEN.
+**********************************************************************
+DESCRIBE FIELD NETWR TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+* DESCRIBE FIELD NETWR LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD NETWR LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+IF TYP = 'F' OR TYP = 'P'.
+ DESCRIBE FIELD NETWR DECIMALS DECI.
+
+ENDIF.
+DESCRIBE FIELD NETWR OUTPUT-LENGTH OLEN.
+WRITE:/5 'VBRK-NETWR TYPE, LENGTH OUTPUT-LENGTH & DECIMALS :', TYP,
+ (3) LEN,  (2) OLEN, (2) DECI.
+***********************************************************************
+DESCRIBE FIELD TEXT1 TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+ DESCRIBE FIELD TEXT1 LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD TEXT1 LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'TBOOKSHOP-TEXT1 TYPE & LENGTH                    :', TYP,
+ (4) LEN.
+*********************************************************************
+
+DESCRIBE FIELD LENGTH TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+* DESCRIBE FIELD LENGTH LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD LENGTH LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'TBOOKSHOP-LENGTH TYPE & LENGTH (DDIC TYPE INT2)  :', TYP,
+ (3) LEN.
+*******************************************************************
+DESCRIBE FIELD WAERS TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+ DESCRIBE FIELD WAERS LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD WAERS LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'CURRENCY CODE WAERS TYPE & LENGTH                :', TYP,
+ (3) LEN.
+********************************************************************
+DESCRIBE FIELD INT1 TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+* DESCRIBE FIELD INT1 LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD INT1 LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'DDIC TYPE INT1 & LENGTH (REF. TO DATA ELEMENT)   :', TYP, 
+ (3) LEN.
+
+************************************************************************
+DESCRIBE FIELD VBRK TYPE TYP COMPONENTS COMPO LENGTH LEN IN BYTE MODE.
+
+WRITE:/5 'VBRK TYPE, LENGTH & CMPONENTS                    :', TYP, (4) 
+ LEN, (3) COMPO.
+************************************************************************
+
+DESCRIBE FIELD STRNG TYPE TYP.
+
+IF TYP = 'C' OR TYP = 'D' OR TYP = 'N' OR TYP = 'T'.
+* DESCRIBE FIELD STRNG LENGTH LEN IN CHARACTER MODE.
+
+ELSE.
+ DESCRIBE FIELD STRNG LENGTH LEN IN BYTE MODE.
+
+ENDIF.
+
+WRITE:/5 'LOCALLY DEFINED TYPE ''STRING'' TYPE & LENGTH      :', 
+ TYP, (3) LEN.

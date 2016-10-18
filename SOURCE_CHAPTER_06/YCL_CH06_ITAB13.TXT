@@ -1,0 +1,69 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB13
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB13.
+
+*************************************
+* Internal Tables - DESCRIBE TABLE **
+* Function: <var> = LINES( itab ). **
+*************************************
+*************************************************
+* DESCRIBE TABLE statement returns:            **
+*                                              **
+* (1) the internal table TYPE - H for hashed   **
+*                       /KIND - S for sorted   **
+*                             - T for standard **
+*     the table TYPE is returned by using the  **
+*     addition/clause KIND followed by the     **
+*     variable name                            **
+*                                              **
+* (2) the number rows/lines in the internal    **
+*     table. you can get this info             **
+*     (a) in your defined variable by using    **
+*         the addition/clause LINES followed   **
+*         by your variable name                **
+*     (b) it is automatically loaded into the  **
+*         system field SY-TFILL. another       **
+*         DESCRIBE statement will overwrite    **
+*         this system field                    **
+*                                              **
+* (3) INITIAL SIZE: returned by using the      **
+*     addition/clause OCCURS followed by the   **
+*     variable name                            **
+*                                              **
+* The number of rows/lines in the internal     **
+* table are also determined by the function    **
+* LINES( ). To get the number of rows/lines    **
+* in your defined variable using this function **
+* <variable> = LINES( <internal table name> ). **
+*                                              **
+*************************************************
+
+DATA: INT_TABLE       TYPE YCL_CH06_TCURT_TAB,
+                           "referring to DDIC table TYPE
+
+      TABLE_TYP(1)    TYPE C,
+      TABLE_LINES1    TYPE SY-TFILL, "SY-TFILL is TYPE I
+      TABLE_LINES2    TYPE SY-TFILL,
+      INIT_SIZE(2)    TYPE N.
+**************************************************
+START-OF-SELECTION.
+
+SELECT * FROM TCURT INTO TABLE INT_TABLE.
+
+DESCRIBE TABLE INT_TABLE LINES TABLE_LINES1
+         KIND TABLE_TYP OCCURS INIT_SIZE.
+
+TABLE_LINES2 = LINES( INT_TABLE ). "function to determine table lines
+
+SKIP 5.
+WRITE:/5 'TABLE TYPE ''H''/''S''/''T''    :', TABLE_TYP,
+      /5 'TABLE ROWS/LINES-DESCRIBE :', (4) TABLE_LINES1,
+      /5 'TABLE ROW/LINES-LINES( )  :', (4) TABLE_LINES2,
+      /5 'SY-TFILL                  :', (4) SY-TFILL,
+      /5 'INITIAL SIZE              :', INIT_SIZE.

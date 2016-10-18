@@ -1,0 +1,67 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_11_SUBQUERY
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_11_SUBQUERY NO STANDARD PAGE HEADING
+             LINE-SIZE 90 LINE-COUNT 60.
+
+****************************************************
+* SELECT statement in WHERE condition: Sub-query  **
+****************************************************
+
+************************************
+* declare data. input city.       **
+* code heading                    **
+*                                 **
+* load internal table from table  **
+* VBRK using sub-query in SELECT  **
+* statement.                      **
+*                                 **
+* sort internal table by VBELN    **
+* output from internal table      **
+************************************
+
+DATA: BEGIN OF BILL_STRU,
+
+       VBELN   TYPE VBRK-VBELN,
+       FKDAT   TYPE VBRK-FKDAT,
+       KUNAG   TYPE VBRK-KUNAG,
+       WAERK   TYPE VBRK-WAERK,
+       NETWR   TYPE VBRK-NETWR,
+      END OF BILL_STRU,
+
+      BILL_TAB LIKE STANDARD TABLE OF BILL_STRU.
+
+PARAMETERS: ORT01 TYPE ORT01_GP LOWER CASE " reference to data element
+            DEFAULT 'Berlin'.
+****************************************************************
+* try: Frankfurt, Hamburg, Bonn, San Francisco, NEW YORK etc. **
+* note the case sensitivity of field ORT01                    **
+****************************************************************
+TOP-OF-PAGE.
+
+WRITE: /5 TEXT-001, ORT01, 66(3) SY-PAGNO.
+SKIP.
+WRITE:/5(63) SY-ULINE.
+WRITE:/5 TEXT-002, 11 TEXT-003, 22 TEXT-004, 33 TEXT-005,
+       56 TEXT-006, 64 TEXT-007.
+WRITE:/6 TEXT-008, 34 TEXT-009.
+WRITE:/5(63) SY-ULINE.
+****************************************************************
+
+START-OF-SELECTION.
+
+SELECT VBELN FKDAT KUNAG WAERK NETWR FROM VBRK INTO TABLE BILL_TAB
+  WHERE KUNAG IN ( SELECT KUNNR FROM KNA1  WHERE ORT01 = ORT01 ).
+
+SORT BILL_TAB BY VBELN.
+
+LOOP AT BILL_TAB INTO BILL_STRU.
+ WRITE:/5(4) SY-TABIX, BILL_STRU-VBELN, BILL_STRU-FKDAT,
+             BILL_STRU-KUNAG USING NO EDIT MASK,
+             BILL_STRU-NETWR, BILL_STRU-WAERK.
+ENDLOOP.

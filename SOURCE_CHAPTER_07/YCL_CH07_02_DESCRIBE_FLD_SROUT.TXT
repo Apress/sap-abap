@@ -1,0 +1,99 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_01_DESCRIBE_FLD_MODUL
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_02_DESCRIBE_FLD_SROUT.
+
+********************************************************
+* DESCRIBE FIELD: Determine Attributes of Data objects *
+* Modularized Program - Usage of Subroutine            *
+********************************************************
+
+************************************************************************
+* declare elementary data objects referring to DDIC table fields      **
+* declare elementary data object referring to DDIC data element       **
+* declare structure data object referring to DDIC table definition    **
+* declare elementary TYPE STRING                                      **
+*                                                                     **
+* call subroutine to determine field attributes & output              **
+*                                                                     **
+************************************************************************
+
+DATA: NAME1          TYPE KNA1-NAME1, "DDIC table field
+      FKDAT          TYPE VBRK-FKDAT, "DDIC table field
+      NETWR          TYPE VBRK-NETWR, "DDIC table field
+      TEXT1          TYPE TBOOKSHOP-TEXT1,  "DDIC table field
+      LENGTH         TYPE TBOOKSHOP-LENGTH, "DDIC table field
+      WAERS          TYPE WAERS, "reference to data element
+      INT1           TYPE MCSAPINT1, "reference to data element
+      VBRK           TYPE VBRK, "reference to table structure
+      STRNG          TYPE STRING.
+
+***************************************************************
+START-OF-SELECTION.
+
+PERFORM PROCESS USING NAME1 TEXT-001.
+
+PERFORM PROCESS USING FKDAT TEXT-002.
+
+PERFORM PROCESS USING NETWR TEXT-003.
+
+PERFORM PROCESS USING TEXT1 TEXT-004.
+
+PERFORM PROCESS USING LENGTH TEXT-005.
+
+PERFORM PROCESS USING WAERS TEXT-006.
+
+PERFORM PROCESS USING INT1 TEXT-007.
+
+PERFORM PROCESS USING VBRK TEXT-008.
+
+PERFORM PROCESS USING STRNG TEXT-009.
+
+*****************************************************************
+* subroutine to process & output. takes two parameters         **
+*                                                              **
+* (1) field (FLD) whose attributes to be determined - by value **
+* (2) text symbol id (TSYM) - by value                         **
+*                                                              **
+* variables TYP, LEN, DECI, COMPO shifted from main program to **
+* the subroutine.                                              **
+*****************************************************************
+FORM PROCESS USING VALUE(FLD) VALUE(TSYM).
+
+DATA: TYP(1)         TYPE C,
+      LEN            TYPE I,
+      DECI           TYPE I,
+      COMPO          TYPE I.
+
+
+DESCRIBE FIELD FLD TYPE TYP. " determine TYPE
+*******************************************************
+IF TYP <> 'C' AND TYP <> 'D' AND TYP <> 'N' AND TYP <> 'T'.
+
+ DESCRIBE FIELD FLD LENGTH LEN IN BYTE MODE.
+
+ELSE.
+ DESCRIBE FIELD FLD LENGTH LEN IN CHARACTER MODE.
+
+ENDIF.
+********************************************************
+ IF TYP <> 'F' AND TYP <> 'P' AND TYP <> 'u' AND TYP <> 'v'.
+  WRITE:/5 TSYM, TYP, (4) LEN.
+
+ ELSEIF TYP = 'F' OR TYP = 'P'.
+  DESCRIBE FIELD FLD DECIMALS DECI. " determine no of decimals
+  WRITE:/5 TSYM, TYP, (4) LEN, (2) DECI.
+
+ ELSEIF TYP = 'u' OR TYP = 'v'.
+ DESCRIBE FIELD FLD TYPE TYP COMPONENTS COMPO. " determine no of fields
+  WRITE:/5 TSYM, TYP, (4) LEN, (3) COMPO.
+*  DESCRIBE FIELD &1 COMPONENTS COMPO. "syntactically not acceptable
+
+ENDIF.
+
+ENDFORM.

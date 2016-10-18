@@ -1,0 +1,76 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB12
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB12 LINE-SIZE 110 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+*************************************************************
+* Internal Tables - Update/Change (MODIFY) - Multiple Rows **
+*************************************************************
+*****************************************************************
+* database table LFA1 is supplier/vendor primary table.        **
+* the table has a field ANRED which contains the title for     **
+* the enterprise like 'Company', 'Firma' etc.                  **
+* (the same field is there in customer primary table KNA1)     **
+*                                                              **
+* Many of the rows have blank in this field ANRED              **
+* you will load the fields LIFNR (supplier code), ANRED, NAME1,**
+* ORT01 into an internal table. you will replace the blank     **
+* ANRED values with 'Messrs.' with the MODIFY statement        **
+* output the internal table before the MODIFY statement and    **
+* after the MODIFY statement                                   **
+*****************************************************************
+
+DATA: BEGIN OF VENDOR_STRU,
+       LIFNR  TYPE LFA1-LIFNR,
+       ANRED  TYPE LFA1-ANRED,
+       NAME1  TYPE LFA1-NAME1,
+       ORT01  TYPE LFA1-ORT01,
+      END OF VENDOR_STRU,
+
+      VENDOR_TAB LIKE STANDARD TABLE OF VENDOR_STRU,
+
+      STRNG   TYPE STRING.
+****************************************************
+TOP-OF-PAGE.
+WRITE :/5 TEXT-001, STRNG, 104(3) SY-PAGNO.
+WRITE:/5(102) SY-ULINE.
+WRITE:/5 TEXT-002, 12 TEXT-003, 23 TEXT-004, 39 TEXT-005, 75 TEXT-006.
+WRITE:/5 TEXT-007, 13 TEXT-008.
+WRITE:/5(102) SY-ULINE.
+****************************************************
+START-OF-SELECTION.
+
+SELECT LIFNR ANRED NAME1 ORT01 FROM LFA1 INTO TABLE VENDOR_TAB
+       UP TO 100 ROWS.
+
+SORT VENDOR_TAB BY LIFNR.
+
+STRNG = TEXT-009.
+LOOP AT VENDOR_TAB INTO VENDOR_STRU.
+
+ WRITE:/5(4) SY-TABIX, VENDOR_STRU-LIFNR USING NO EDIT MASK,
+       VENDOR_STRU-ANRED, VENDOR_STRU-NAME1, VENDOR_STRU-ORT01.
+
+ENDLOOP.
+
+VENDOR_STRU-ANRED = 'Messrs.'.
+
+MODIFY VENDOR_TAB FROM VENDOR_STRU TRANSPORTING ANRED
+    WHERE ANRED = ' '.
+
+STRNG = TEXT-010.
+
+NEW-PAGE. "start post MODIFY on a new page
+
+LOOP AT VENDOR_TAB INTO VENDOR_STRU.
+
+ WRITE:/5(4) SY-TABIX, VENDOR_STRU-LIFNR USING NO EDIT MASK,
+       VENDOR_STRU-ANRED, VENDOR_STRU-NAME1, VENDOR_STRU-ORT01.
+
+ENDLOOP.

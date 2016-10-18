@@ -1,0 +1,70 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB04
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB04.
+
+***************************************
+* Internal Tables: APPEND, TEXT SORT **
+***************************************
+************************************************************
+* declare simple/non-structured TYPE C internal table     **
+* in 4.X mode                                             **
+*                                                         **
+* fill this table with text containing extra vowels       **
+* through APPEND statement                                **
+*                                                         **
+* output table rows - LOOP...ENDLOOP                      **
+* output will appear in order in which rows were appended **
+*                                                         **
+* perform ordinary sort on the table                      **
+* output will appear in order of byte values              **
+*                                                         **
+* perform text sort on the table                          **
+* output will appear in true alphabetic order             **
+************************************************************
+TYPES: NAME_TYPE(25)  TYPE C.
+
+DATA : NAMES TYPE STANDARD TABLE OF NAME_TYPE WITH HEADER LINE
+        INITIAL SIZE 0. " unstructured internal table
+
+NAMES = 'BÖLLINGER'.
+APPEND NAMES TO NAMES. " adds a row at the end
+
+NAMES = 'BOLLINGER'.
+APPEND NAMES TO NAMES.
+
+NAMES = 'BILLINGER'.
+APPEND NAMES TO NAMES.
+
+NAMES = 'BÏLLINGER'.
+APPEND NAMES TO NAMES.
+
+NAMES = 'BULLINGER'.
+APPEND NAMES TO NAMES.
+
+FORMAT INVERSE ON COLOR COL_TOTAL.
+WRITE:/5 'Original Data:'.
+LOOP AT NAMES.
+ WRITE:/5 NAMES.
+ENDLOOP.
+
+SORT NAMES.
+SKIP.
+FORMAT INVERSE ON COLOR COL_KEY.
+WRITE:/5 'Ordinary Sort:'.
+LOOP AT NAMES.
+ WRITE:/5 NAMES.
+ENDLOOP.
+
+SORT NAMES AS TEXT.
+SKIP.
+FORMAT INVERSE ON COLOR COL_POSITIVE.
+WRITE:/5 'Text Sort:'.
+LOOP AT NAMES.
+ WRITE:/5 NAMES.
+ENDLOOP.

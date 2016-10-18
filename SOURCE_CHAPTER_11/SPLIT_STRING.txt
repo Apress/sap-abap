@@ -1,0 +1,78 @@
+method SPLIT_STRING.
+
+* CLASS - YCL_CH11_CL_STRING_OPERATIONS
+* METHOD SPLIT_STRING
+*    IMPORTING
+*      by value STRING_TO_SPLIT TYPE CSEQUENCE
+*    EXPORTING
+*      by value STABLE TYPE STANDARD TABLE
+*    EXCEPTIONS
+*      RETURN_TABLE_ELEMENT_NOT_TYPEC
+*      EMPTY_STRING
+
+DATA: WORD       TYPE STRING, " store extracted word
+      TYP(1)     TYPE C,      " store variable TYPE
+      LEN        TYPE I,      " store length of string
+      CLEN       TYPE I,      " store available characters/columns
+      WLEN       TYPE I,      " store extracted word length
+      SREF       TYPE REF TO DATA. " ref variable for line of STABLE
+
+FIELD-SYMBOLS: <WA> TYPE ANY. " field symbol to address line of STABLE
+************************************
+CREATE DATA SREF LIKE LINE OF STABLE.
+ASSIGN SREF->* TO <WA>.
+DESCRIBE FIELD <WA> TYPE TYP. " <WA> reference to the elementary
+                              " data item i.e. line of STABLE
+IF TYP <> 'C' .
+ MESSAGE S007(YCL_CH07_MCLASS01) RAISING
+  RETURN_TABLE_ELEMENT_NOT_TYPEC.
+ENDIF.
+
+IF STRING_TO_SPLIT  IS INITIAL.
+ MESSAGE S035(YCL_CH07_MCLASS01) RAISING
+  EMPTY_STRING.
+ENDIF.
+
+
+REFRESH STABLE[]. " clear internal table of existing rows
+
+DESCRIBE FIELD <WA> LENGTH LEN IN CHARACTER MODE.
+  " get length of element
+
+CLEN   = LEN.
+
+DO.
+
+ IF STRING_TO_SPLIT IS INITIAL.
+  EXIT.
+ ENDIF.
+
+ SEARCH STRING_TO_SPLIT FOR '. .'. " SEARCH for embedded blank
+
+ IF SY-SUBRC <> 0. "last word in the text
+  WORD   = STRING_TO_SPLIT.
+  STRING_TO_SPLIT = ''.
+ ELSE.
+  SPLIT STRING_TO_SPLIT AT ' ' INTO WORD STRING_TO_SPLIT.
+ ENDIF.
+
+ WLEN = STRLEN( WORD ).
+
+ IF SY-INDEX = 1.
+  <WA> = WORD.
+ ELSEIF WLEN <= CLEN.
+  CONCATENATE <WA> WORD INTO <WA> SEPARATED BY ' '.
+ ELSE.
+  APPEND <WA> TO STABLE[].
+  <WA> = WORD.
+  CLEN = LEN.
+ ENDIF.
+
+ CLEN = CLEN - WLEN - 1.
+ENDDO.
+
+IF <WA> <> ' '.
+ APPEND <WA> TO STABLE[].
+ENDIF.
+
+endmethod.

@@ -1,0 +1,22 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN09
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN09.
+
+*************************************************
+* SELECT-OPTIONS: NO INTERVALS, NO-EXTENSION   **
+* SELECT-OPTIONS Declaration By Reference To   **
+* DDIC Field Stored In An Internal Data Object **
+*************************************************
+
+DATA: STRNG TYPE STRING VALUE 'KNA1-KUNNR'.
+
+SELECT-OPTIONS: CUST_CD1  FOR (STRNG), " reference to DDIC field/not local field
+                CUST_CD2  FOR (STRNG) NO INTERVALS,
+                CUST_CD3  FOR (STRNG) NO-EXTENSION,
+                CUST_CD4  FOR (STRNG) NO INTERVALS NO-EXTENSION.

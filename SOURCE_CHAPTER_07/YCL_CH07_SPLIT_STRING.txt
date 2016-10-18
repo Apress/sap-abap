@@ -1,0 +1,152 @@
+FUNCTION YCL_CH07_SPLIT_STRING.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(STRING_TO_SPLIT)
+*"  TABLES
+*"      STABLE
+*"  EXCEPTIONS
+*"      IMPORT_PARAMETER_TYPE_INVALID
+*"      RETURN_TABLE_ELEMENT_NOT_TYPEC
+*"----------------------------------------------------------------------
+
+**********************************************************
+* note: the parameter STABLE is being passed as TABLES. **
+* in your case it is expected to be an unstructured     **
+* internal table. in function modules parameters passed **
+* as TABLES implicitly generate a header line.          **
+* so in your function module, there are two data objects**
+* of the same name STABLE: (i) STABLE - unstructured    **
+* internal table (ii) STABLE - elementary pre-defined   **
+* TYPE C.                                               **
+* you are referring to internal table as STABLE[] and   **
+* elementary pre-defined TYPE c as STABLE. Strictly     **
+* speaking, this is not necessary/mandatory.            **
+*                                                       **
+* you are operating directly on the IMPORT parameter    **
+* STRING_TO_SPLIT. this is being passed by value. so    **
+* operations are on local copy. original remains intact **
+**********************************************************
+
+**********************************************************
+* declare data.                                         **
+*                                                       **
+* check & RAISE exceptions                              **
+*                                                       **
+* REFRESH STABLE[] (remove existing rows)               **
+*                                                       **
+* determine length of element & assign to LEN, CLEN     **
+* this is the max number of characters in each row of   **
+* split string/text being returned                      **
+* LEN after this assignment will remain constant        **
+*                                                       **
+* CLEN value reflects available characters in a row     **
+* at any time. during start of row CLEN = LEN           **
+*                                                       **
+* the logic is: in a loop extract one word at a time    **
+* from STRING_O_SPLIT (source) and concatenate/assign to**
+* STABLE - elementary. (destination)                    **
+*                                                       **
+* if columns are available in STABLE - elementary,      **
+* CONCATENATE the extracted word.                       **
+*                                                       **
+* if columns are not available to accommodate extracted **
+* word, APPEND STABLE TO STABLE[]. assign word to       **
+* STABLE - elementary.                                  **
+*                                                       **
+* continue this process till all the words are          **
+* extracted and transferred to final destination i.e.   **
+* unstructured internal table STABLE[]                  **
+*                                                       **
+* set up unconditional loop DO.                         **
+* check if all words extracted from STRING_TO_SPLIT     **
+* i.e. STRING_TO_SPLIT = ' ' if so EXIT loop.           **
+*                                                       **
+* you are extracting one word at a time from            **
+* STRING_TO_SPLIT into WORD through SEARCH ' . .' i.e.  **
+* search for embedded blank i.e. more than one word in  **
+* the STRING_TO_SPLIT.                                  **
+*                                                       **
+* if this SEARCH is success/                            **
+* SY-SUBRC = 0, SPLIT STRING_TO_SPLIT INTO WORD         **
+* STRING_TO_SPLIT i.e. get the first word in WORD,      **
+* residual text back in STRING_TO_SPLIT.                **
+*                                                       **
+* if SEARCH SY-SUBRC <> 0 i.e. only one last word in    **
+* the STRING_TO_SPLIT. assign i.e.WORD = STRING_TO_SPLIT**
+*                                                       **
+* determine length of WORD and store in WLEN            **
+*                                                       **
+* check whether WLEN <= CLEN. if so CONCATENATE WORD to **
+* STABLE.                                               **
+*                                                       **
+* if VLEN not <= CLEN, CONDENSE STABLE. APPPEND STABLE  **
+* TO STABLE[]. STABLE = WORD. CLEN = LEN                **
+*                                                       **
+* adjust CLEN i.e. CLEN = CLEN - WLEN - 1               **
+* ENDDO end loop                                        **
+*                                                       **
+* if STABLE <> ' ' APPEND STABLE TO STABLE[]            **
+*                                                       **
+**********************************************************
+DATA: WORD       TYPE STRING, " store extracted word
+      TYP(1)     TYPE C,      " store variable TYPE
+      LEN        TYPE I,      " store length of string
+      CLEN       TYPE I,      " store available characters/columns
+      WLEN       TYPE I.      " store extracted word length
+************************************
+DESCRIBE FIELD STRING_TO_SPLIT TYPE TYP.
+
+IF TYP <> 'C' AND TYP <> 'g'.
+ MESSAGE S006(YCL_CH06_MCLASS01) RAISING
+  IMPORT_PARAMETER_TYPE_INVALID.
+ENDIF.
+
+DESCRIBE FIELD STABLE TYPE TYP. " STABLE reference to the elementary
+                                " data item, STABLE[] reference to itab
+IF TYP <> 'C' .
+ MESSAGE S007(YCL_CH06_MCLASS01) RAISING
+  RETURN_TABLE_ELEMENT_NOT_TYPEC.
+ENDIF.
+
+REFRESH STABLE[]. " clear internal table of existing rows
+
+DESCRIBE FIELD STABLE LENGTH LEN IN CHARACTER MODE. " get length of element
+
+CLEN   = LEN.
+
+DO.
+
+ IF STRING_TO_SPLIT IS INITIAL.
+  EXIT.
+ ENDIF.
+
+ SEARCH STRING_TO_SPLIT FOR '. .'. " SEARCH for embedded blank
+
+ IF SY-SUBRC <> 0. "last word in the text
+  WORD   = STRING_TO_SPLIT.
+  STRING_TO_SPLIT = ''.
+ ELSE.
+  SPLIT STRING_TO_SPLIT AT ' ' INTO WORD STRING_TO_SPLIT.
+ ENDIF.
+
+ WLEN = STRLEN( WORD ).
+
+ IF SY-INDEX = 1.
+  STABLE = WORD.
+ ELSEIF WLEN <= CLEN.
+  CONCATENATE STABLE WORD INTO STABLE SEPARATED BY ' '.
+ ELSE.
+  APPEND STABLE TO STABLE[].
+  STABLE = WORD.
+  CLEN = LEN.
+ ENDIF.
+
+ CLEN = CLEN - WLEN - 1.
+ENDDO.
+
+IF STABLE <> ' '.
+ APPEND STABLE TO STABLE[].
+ENDIF.
+
+ENDFUNCTION.

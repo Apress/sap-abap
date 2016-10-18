@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN12
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN12.
+
+**********************************
+* User Defined SELECTION-SCREEN **
+**********************************
+
+DATA: KUNNR TYPE KUNNR.
+
+SELECTION-SCREEN BEGIN OF SCREEN 500.
+
+SELECT-OPTIONS CUST_CD FOR KUNNR.
+SELECTION-SCREEN SKIP 2.
+PARAMETERS: CCODE TYPE T001-BUKRS DEFAULT 1000.
+
+SELECTION-SCREEN END OF SCREEN 500.
+
+
+CALL SELECTION-SCREEN 500 STARTING AT 5 1
+     ENDING AT 85 15 USING SELECTION-SET 'VAR1'.
+                    " start row & column, end row & column

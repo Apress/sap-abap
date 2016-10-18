@@ -1,0 +1,103 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB01 LINE-SIZE 135 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+*********************************************************************
+* List of Billing Documents of a Specified Company Code with Total **
+*********************************************************************
+*******************************************************************
+* declare internal table in 3.X mode:BEGIN OF <itab> OCCURS <n>. **
+*                                     ..                         **
+*                                    END OF ,itab>               **
+*                                                                **
+* PARAMETERS CCODE TYPE VBRK-BUKRS VALUE CHECK DEFAULT 3000      **
+* to select company code                                         **
+*                                                                **
+* get BUTXT WAERS from T001 - SELECT SINGLE etc.                 **
+*                                                                **
+* load the internal table from the view  YCL_CH05_VBRKKNA        **
+* with SELECT <fields> from YCL_CH05_VBRKKNA INTO TABLE <itab>   **
+*       WHERE BUKRS = CCODE.                                     **
+*                                                                **
+*  set LOOP AT <itab> into <itab>.                               **
+*       calculate amount in operating currency of chosen CCODE   **
+*       WRITE...                                                 **
+*       build total                                              **
+*      ENDLOOP.                                                  **
+*                                                                **
+*  output total                                                  **
+*                                                                **
+*******************************************************************
+TABLES: T001. " local structure with all fields of T001
+
+DATA: BEGIN OF BILL_DOCS_TAB OCCURS 5,
+       VBELN  TYPE YCL_CH05_VBRKKNA-VBELN,
+       FKDAT  TYPE YCL_CH05_VBRKKNA-FKDAT,
+       KUNNR  TYPE YCL_CH05_VBRKKNA-KUNNR,
+       NAME1  TYPE YCL_CH05_VBRKKNA-NAME1,
+       ORT01  TYPE YCL_CH05_VBRKKNA-ORT01,
+       NETWR  TYPE YCL_CH05_VBRKKNA-NETWR,
+       KURRF  TYPE YCL_CH05_VBRKKNA-KURRF,
+      END OF BILL_DOCS_TAB,
+
+      STRNG     TYPE STRING,
+      TOTAL     TYPE VBRK-NETWR.
+
+PARAMETERS CCODE  TYPE VBRK-BUKRS DEFAULT 3000 VALUE CHECK.
+                  " the clause VALUE CHECK will check values
+                  " in the primary table of this foreign key field
+********************************************************************
+TOP-OF-PAGE.
+
+WRITE :/5 STRNG, 129(3) SY-PAGNO. " STRNG - refer CONCATENATE statement in
+                                  " START-OF-SELECTION
+SKIP 1.
+WRITE:/5(127) SY-ULINE.
+WRITE:/5 TEXT-003,11 TEXT-004, 22 TEXT-005, 33 TEXT-006, 46 TEXT-007,
+         83 TEXT-008, 126 TEXT-009.
+
+WRITE:/6 TEXT-010, 35 TEXT-011.
+WRITE:/5(127) SY-ULINE.
+
+********************************************************************
+START-OF-SELECTION.
+
+
+SELECT SINGLE * FROM T001 WHERE BUKRS = CCODE." fetches a single row, no
+                                              " loop construct SELECT
+                                              " ENDSELECT
+
+CONCATENATE TEXT-001 CCODE '/' T001-BUTXT TEXT-002 T001-WAERS INTO STRNG.
+
+SELECT VBELN FKDAT KUNNR NAME1 ORT01 NETWR KURRF FROM
+  YCL_CH05_VBRKKNA INTO  " dumps filtered data from
+  TABLE BILL_DOCS_TAB    " view into the internal table
+  WHERE BUKRS = CCODE.
+
+********************************************************************
+LOOP AT BILL_DOCS_TAB INTO BILL_DOCS_TAB.
+
+ BILL_DOCS_TAB-NETWR = BILL_DOCS_TAB-NETWR * BILL_DOCS_TAB-KURRF.
+
+ WRITE:/5(5) SY-TABIX, BILL_DOCS_TAB-VBELN, BILL_DOCS_TAB-FKDAT,
+             BILL_DOCS_TAB-KUNNR, BILL_DOCS_TAB-NAME1,
+             BILL_DOCS_TAB-ORT01, (17) BILL_DOCS_TAB-NETWR.
+
+ TOTAL = TOTAL + BILL_DOCS_TAB-NETWR.
+
+ENDLOOP.
+********************************
+
+END-OF-SELECTION.
+SKIP 1.
+
+WRITE: /(17) TOTAL UNDER BILL_DOCS_TAB-NETWR. " the field TOTAL will
+                                              " be output
+                                              " UNDER NETWR.

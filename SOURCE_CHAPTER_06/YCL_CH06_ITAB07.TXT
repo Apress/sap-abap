@@ -1,0 +1,50 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB07
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB07.
+
+***********************************
+* Internal Table READ With Index **
+***********************************
+******************************************
+* declare TABLES TCURT. declare sorted  **
+* table with TCURT structure key WAERS  **
+*                                       **
+* input record/row no. (PARAMETERS)     **
+*                                       **
+* load internal table from TCURT WHERE  **
+* SPRAS = SY-LANGU                      **
+*                                       **
+* issue READ.. INDEX..                  **
+* check SY-SUBRC & output               **
+******************************************
+
+TABLES TCURT. " local structure having all fields
+              " of database table TCURT
+
+DATA: CURR_TAB TYPE SORTED TABLE OF TCURT WITH
+       UNIQUE KEY WAERS.
+
+************************************************
+PARAMETERS: REC_NO(4) TYPE N DEFAULT 75.
+
+START-OF-SELECTION.
+
+SELECT * FROM TCURT INTO TABLE CURR_TAB WHERE " *(star) justified. table
+         SPRAS = SY-LANGU.                    " consists of few fields
+
+READ TABLE CURR_TAB INTO TCURT INDEX REC_NO   " fetch only
+     ."TRANSPORTING WAERS LTEXT.              " WAERS LTEXT
+
+IF SY-SUBRC = 0.
+ FORMAT INVERSE COLOR COL_POSITIVE.
+ WRITE:/5(4) SY-TABIX, TCURT-WAERS, TCURT-LTEXT, TCURT-KTEXT.
+ELSE.
+ FORMAT INVERSE COLOR COL_NEGATIVE.
+ WRITE:/5 'Row No.:', REC_NO, 'Invalid'.
+ENDIF.

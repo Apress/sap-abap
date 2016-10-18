@@ -1,0 +1,164 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_05_OUTPUT_INBOX_MACRO
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_05_OUTPUT_INBOX_MACRO NO STANDARD PAGE HEADING
+   LINE-COUNT 60 LINE-SIZE 75.
+
+********************************************************************
+* SAP Icon List-Use Macro To Impart Color & Enclose Output In Box **
+* Use Subroutine to Output Report Header Instead of TOP-OF-PAGE   **
+* Event                                                           **
+********************************************************************
+
+*****************************************************************
+* retrieve data from the database table ICON. SELECT ENDSELECT **
+* output ICON particulars i.e. ICON-NAME (icon name)           **
+*                              ICON-ID   (icon id.)            **
+*                            & ICON+1(2) (icon code)           **
+*                                                              **
+* use a macro to output icon particulars enclosed in box in    **
+* specified color.                                             **
+*                                                              **
+* each time macro is invoked, one item of info (field) is      **
+* output. each field is enclosed in a box: SY-VLINE on left &  **
+* right, SY-ULINE on top & bottom.                             **
+*                                                              **
+* the column pointer after output points to the column next to **
+* the right side SY-VLINE.                                     **
+* (system field SY-COLNO stores the current column number)     **
+*                                                              **
+* the row pointer points to the row between top & bottom       **
+*  horizontal SY-ULINE.                                        **
+* (system field SY-LINNO stores the current row)               **
+*                                                              **
+* color is through the FORMAT statement.                       **
+*                                                              **
+* macro takes 5 parameters(place holders &1, &2, &3, &4, &5) : **
+*             (1) field name/text symbol id.                   **
+*             (2) output width in column positions             **
+*             (3) ON/OFF for INVERSE ON/OFF                    **
+*             (4) ON/OFF for INTENSIFIED ON/OFF                **
+*             (5) color name (COL_KEY, COL_POSITIVE et al)     **
+*                                                              **
+* usage of 'SKIP TO..' & 'POSITION..' statements.              **
+*                                                              **
+* After each line, (all fields are output) two lines are       **
+* skipped. column position is set to 5.                        **
+*****************************************************************
+
+*****************************************************************
+* in the report heading, the page number (SY-PAGNO) is         **
+* output as well as the column headings. the column headings   **
+* are enclosed in boxes & output through the macro again.      **
+* the report heading is not generated using the TOP-OF-PAGE    **
+* event. it is generated using a subroutine. this subroutine   **
+* is called either when CNT IS INITIAL OR CNTR >= 58.          **
+* you are using the NEW-PAGE statement to start output on a new**
+* page every time the report heading is to be output. this     **
+* was happening automatically with TOP-OF-PAGE event.          **
+*                                                              **
+* you are not using the TOP-OF-PAGE event because the mix of   **
+* TOP-OF-PAGE event & macro is not generating properly         **
+* formatted output.                                            **
+*                                                              **
+*****************************************************************
+
+
+TABLES: ICON.
+DATA:  COL      TYPE SY-COLNO,
+       LIN      TYPE SY-LINNO,
+       LENGTH   TYPE I,
+       PG       TYPE SY-PAGNO,
+       CNTR     TYPE I,
+       CNT(6)   TYPE C.
+
+
+**** OUTPUT IN A BOX MACRO ***
+******************************
+
+DEFINE WRITE_GRID.
+ COL = SY-COLNO. LIN = SY-LINNO. " save current column & line/row no.
+
+ FORMAT INVERSE &3 INTENSIFIED &4 COLOR &5.
+
+ WRITE: '|' NO-GAP, (&2) &1 NO-GAP,
+  '|' NO-GAP. " output field with left & right SY-VLINE
+
+ LENGTH = SY-COLNO - COL. " derive length of horizontal line
+
+ LIN = LIN - 1. SKIP TO LINE LIN. POSITION COL.
+
+ ULINE AT COL(LENGTH). " top horizontal line
+
+ LIN = LIN + 2. SKIP TO LINE LIN. POSITION COL.
+
+ ULINE AT COL(LENGTH). " bottom horizontal line
+
+ LIN = LIN - 1. COL = SY-COLNO - 2.
+
+ SKIP TO LINE LIN. " set line & column no for next output
+ POSITION COL.
+
+END-OF-DEFINITION.
+
+********************
+********************
+START-OF-SELECTION.
+
+SELECT * FROM ICON ORDER BY NAME.
+ IF CNTR >= 58 OR CNT IS INITIAL. " value 58 arrived by trial & error
+  PERFORM PHEAD.
+ ENDIF.
+
+ CNT = SY-DBCNT. " CNT TYPE C to suppress thousand separator/comma
+
+ WRITE_GRID CNT 6 ON OFF COL_TOTAL. " output CNT column width 6
+                                    " INVERSE ON INTENSIFIED OFF
+                                    " COLOR COL_TOTAL
+ WRITE_GRID ICON-NAME 35 ON OFF COL_KEY.
+
+ WRITE_GRID ICON-ID 7 ON OFF COL_POSITIVE.
+
+ WRITE_GRID ICON+1(2) 4 ON OFF COL_HEADING.
+
+ SKIP 2. " one extra line for bottom horizontal line
+
+ POSITION 5.
+
+ CNTR = CNTR + 2. " increase line count by 2
+
+ENDSELECT.
+
+************* report header ******************
+FORM PHEAD.
+
+NEW-PAGE NO-HEADING.
+
+PG = PG + 1.
+
+WRITE 59(3)  PG.
+
+SKIP 2. " make one row available for top horizontal line
+
+POSITION 5. "all output is starting as usual from column 5
+
+WRITE_GRID TEXT-001 6 ON OFF COL_TOTAL.
+
+WRITE_GRID TEXT-002 35 ON OFF COL_KEY.
+
+WRITE_GRID TEXT-003 7 ON OFF COL_POSITIVE.
+
+WRITE_GRID TEXT-004 4 ON OFF COL_HEADING.
+
+ SKIP 2.
+
+ POSITION 5. " for next row column position 5
+
+ CNTR = 4. " line count set to 4
+
+ENDFORM.

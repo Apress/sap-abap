@@ -1,0 +1,62 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH14_06_TABSTRIP_SL_SCREEN
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH14_06_TABSTRIP_SL_SCREEN.
+
+**********************************
+* Tab Strip in SELECTION-SCREEN **
+**********************************
+
+*********************************************
+* SELECTION-SCREEN SUBSCREENS declarations **
+*********************************************
+SELECTION-SCREEN BEGIN OF SCREEN 100 AS SUBSCREEN
+                  NO INTERVALS.
+
+PARAMETERS: KUNNR  TYPE  KUNNR,
+            VKORG  TYPE  VKORG,
+            VTEXT  TYPE  VTEXT.
+
+SELECTION-SCREEN END OF SCREEN 100.
+
+SELECTION-SCREEN BEGIN OF SCREEN 200 AS SUBSCREEN
+                  NO INTERVALS.
+
+PARAMETERS: LIFNR  TYPE  LIFNR,
+            EKORG  TYPE  EKORG,
+            EKOTX  TYPE  EKOTX.
+
+SELECTION-SCREEN END OF SCREEN 200.
+
+**************************************************************
+SELECTION-SCREEN: BEGIN OF BLOCK BLOCK1 WITH FRAME TITLE TL01
+                   NO INTERVALS,
+
+                  SKIP,
+**************************************************************
+* TABBED BLOCK - special type of SELECTION-SCREEN BLOCK     **
+* TABBED BLOCKS accept only SELECTION-SCREEN TAB statements **
+* inside them to create tab strip tabs                      **
+**************************************************************
+                  BEGIN OF TABBED BLOCK PART_TAB FOR 3 LINES
+                   NO INTERVALS,
+
+                  TAB (18) CUST_BT USER-COMMAND CUSTOMER
+                                   DEFAULT SCREEN 100,
+
+                  TAB (18) VEND_BT USER-COMMAND VENDOR
+                                   DEFAULT SCREEN 200,
+
+                  END OF BLOCK PART_TAB,
+                  END OF BLOCK BLOCK1.
+
+**************************************************************
+INITIALIZATION.
+  TL01    = 'Business Partner'(001).
+  CUST_BT = '@A0@ Customer'(002).
+  VEND_BT = '@AD@ Vendor'(003).

@@ -1,0 +1,73 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_02_PSIZE_INTO_TAB
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_02_PSIZE_INTO_TAB NO STANDARD PAGE HEADING
+      LINE-SIZE 95 LINE-COUNT 60.
+
+*********************************************************
+* Fetch Data From Database Table In Batches INTO TABLE **
+*********************************************************
+
+******************************************************
+* if no of rows/data is very large exerting pressure**
+* on RAM usage, then in this scenario data can be   **
+* fetched in batches of smaller size.               **
+*                                                   **
+* in the present scenario, you are fetching data in **
+* batches of 1000 rows at a time. this batch size   **
+* can be specified with the phrase PACKAGE SIZE & a **
+* literal/variable.                                 **
+*                                                   **
+* every time batch of rows is fetched, existing data**
+* in the internal table is overwritten/deleted.     **
+*                                                   **
+* at any instant only one batch of data/rows is     **
+* existing in the internal table.                   **
+*                                                   **
+* you are using an INCLUDE program                  **
+* YCL_CH08_01_INCLUDE_HEADING for non standard      **
+* header. you are using this same INCLUDE program   **
+* for the hands-on YCL_CH08_03_PSIZE_APPEND_TAB     **
+******************************************************
+******************************************************
+* declare data. input PACKAGE SIZE thru PARAMETERS  **
+* INCLUDE program for heading                       **
+*                                                   **
+* retrieve a batch of rows with SELECT...PACKAGE    **
+* SIZE...etc.                                       **
+* output retrieved batch LOOP AT...WRITE...ENDLOOP  **
+* ENDSELECT.                                        **
+******************************************************
+
+DATA: CUSTOMER_TAB TYPE STANDARD TABLE OF YCL_CH05_CUST_STRU
+                         WITH HEADER LINE,
+       CNTR(3)     TYPE P DECIMALS 0,
+       CDATE       TYPE STRING.
+
+PARAMETERS: PKSZ(4)  TYPE N DEFAULT 1000.
+********************************************
+INCLUDE YCL_CH08_01_INCLUDE_HEADING. " INCLUDE program for heading
+
+START-OF-SELECTION.
+
+CONCATENATE SY-DATUM+6(2) SY-DATUM+4(2) SY-DATUM+0(4)
+ INTO CDATE SEPARATED BY '/'.
+*************************************************
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO
+  TABLE CUSTOMER_TAB PACKAGE SIZE PKSZ.
+
+ LOOP AT CUSTOMER_TAB. " output fetched batch
+  CNTR = CNTR + 1.     " cannot use SY-TABIX for serial number
+
+  WRITE:/5(5) CNTR, CUSTOMER_TAB-KUNNR USING NO EDIT MASK,
+   CUSTOMER_TAB-NAME1, CUSTOMER_TAB-ORT01.
+ ENDLOOP.
+
+ SKIP 2. " gap between batches of data
+
+ENDSELECT.

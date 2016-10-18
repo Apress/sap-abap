@@ -1,0 +1,58 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB15
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT YCL_CH06_ITAB15.
+
+********************************************************
+* Internal Tables, Remove Data - CLEAR, REFRESH, FREE **
+********************************************************
+********************************************************
+* declare three internal tables of structure TCURT    **
+*                                                     **
+* load the three internal tables with TCURT data      **
+*                                                     **
+* operate DESCRIBE TABLE on the three internal tables **
+* determine number of rows. output the number of rows **
+*                                                     **
+* operate CLEAR, REFRESH, FREE statements on the      **
+* internal tables.                                    **
+*                                                     **
+* operate DESCRIBE TABLE on the three internal tables **
+* determine number of rows. output the number of rows **
+********************************************************
+
+DATA: CURR_TAB1   TYPE STANDARD TABLE OF TCURT WITH HEADER LINE,
+      CURR_TAB2   TYPE STANDARD TABLE OF TCURT,
+      CURR_TAB3   TYPE STANDARD TABLE OF TCURT WITH HEADER LINE.
+*****************************************************
+START-OF-SELECTION.
+SELECT * FROM TCURT INTO TABLE : CURR_TAB1,
+                                 CURR_TAB2,
+                                 CURR_TAB3.
+*************************************************
+DESCRIBE TABLE CURR_TAB1.
+WRITE:/5 'CURR_TAB1-PRE CLEAR STATUS  :', (4) SY-TFILL.
+
+DESCRIBE TABLE CURR_TAB2.
+WRITE:/5 'CURR_TAB2-PRE REFRESH STATUS:', (4) SY-TFILL.
+
+DESCRIBE TABLE CURR_TAB3.
+WRITE:/5 'CURR_TAB3-PRE FREE STATUS   :', (4) SY-TFILL.
+
+SKIP 2.
+CLEAR CURR_TAB1[]." to distinguish itab from structure of
+                  " the same name
+DESCRIBE TABLE CURR_TAB1.
+WRITE:/5 'CURR_TAB1-POST CLEAR STATUS  :', (4) SY-TFILL.
+
+REFRESH CURR_TAB2.
+DESCRIBE TABLE CURR_TAB2.
+WRITE:/5 'CURR_TAB2-POST REFRESH STATUS:', (4) SY-TFILL.
+
+FREE CURR_TAB3.
+DESCRIBE TABLE CURR_TAB3.
+WRITE:/5 'CURR_TAB3-POST FREE STATUS   :', (4) SY-TFILL.

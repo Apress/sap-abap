@@ -1,0 +1,47 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_07_STRU_DATA_TYP_OBJ1
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_07_STRU_DATA_TYP_OBJ1.
+
+************************************************************
+* User Defined TYPE, Reference to Structured Data Object  **
+************************************************************
+
+******************************************************
+* declare user defined structured TYPE with TYPES   **
+* statement. declare two structured data objects    **
+* (source, destination) by referring to this user   **
+* defined structured TYPE                           **
+* assign values to individual fields of source      **
+* use MOVE statement to transfer entire data of     **
+* source to destination. output from destination    **
+******************************************************
+
+TYPES: BEGIN OF CONTACT_MODES_TYPE, "user defined structured TYPE
+
+         NAME(25)         TYPE C,
+         LAND_LINE(12)    TYPE N,
+         CELL_NO(14)      TYPE N,
+         EMAIL            TYPE STRING,
+
+       END OF CONTACT_MODES_TYPE.
+
+DATA: CONTACT_MODES_SRCE TYPE CONTACT_MODES_TYPE,
+      CONTACT_MODES_DEST TYPE CONTACT_MODES_TYPE.
+
+CONTACT_MODES_SRCE-NAME        = 'ATUL VASAN'.
+CONTACT_MODES_SRCE-LAND_LINE   = '00912696008'.
+CONTACT_MODES_SRCE-CELL_NO     = '00919502102355'.
+CONTACT_MODES_SRCE-EMAIL       = 'atulvs@yahoo.co.in'.
+
+MOVE CONTACT_MODES_SRCE TO CONTACT_MODES_DEST. "MOVE stru to stru
+
+WRITE: /5 'Name          :', CONTACT_MODES_DEST-NAME,
+       /5 'Land Line No. :', CONTACT_MODES_DEST-LAND_LINE,
+       /5 'Cell No.      :', CONTACT_MODES_DEST-CELL_NO,
+       /5 'Email Address :', CONTACT_MODES_DEST-EMAIL.

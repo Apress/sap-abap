@@ -1,0 +1,147 @@
+*&---------------------------------------------------------------------*
+*& Report YCL_CH10_ILISTS02
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_ILISTS02 NO STANDARD PAGE HEADING
+        LINE-COUNT 60.
+
+*********************************************************
+* Customer Wise Sales Summary & 1 Level Detail. Click  **
+* On a Customer To List Billing Docs Of That Customer  **
+*********************************************************
+
+*************************************************
+* primary list same as the output of program   **
+* YCL_CH06_ITAB05. copy those lines.           **
+*                                              **
+* declare internal table, structure to store   **
+* data to be output for secondary list.        **
+* declare data to store customer code, name to **
+* appear in the heading of secondary list      **
+* declare data to total amount to be output in **
+* secondary list.                              **
+*                                              **
+* in the event block AT LINE-SELECTION:-       **
+* 1.ensure that the system field SY-LSIND Does **
+*   not exceed 1.                              **
+*                                              **
+* 2. extract customer code & name on which     **
+*    clicking was done                         **
+*                                              **
+* 3. load internal table from database table   **
+*    VBRK for extracted customer code and      **
+*    company code input                        **
+*                                              **
+* 4. initialize total field for secondary list **
+*                                              **
+* 5. set up LOOP AT...ENDLOOP to output        **
+*    secondary list and build secondary list   **
+*    total.                                    **
+*                                              **
+* 6. code for the secondary list heading using **
+*    event TOP-OF-PAGE DURING LINE-SELECTION   **
+*                                              **
+* 7. end of loop, output secondary list total  **
+*************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+
+      BEGIN OF BILLS_STRU,
+       VBELN    TYPE VBRK-VBELN,
+       FKDAT    TYPE VBRK-FKDAT,
+       WAERK    TYPE VBRK-WAERK,
+       KURRF    TYPE VBRK-KURRF,
+       NETWR    TYPE VBRK-NETWR,
+      END OF BILLS_STRU,
+      BILLS_TAB LIKE STANDARD TABLE OF BILLS_STRU,
+
+      KUNNR    TYPE KNA1-KUNNR,
+      NAME1    TYPE KNA1-NAME1,
+      TOTAL    TYPE VBRK-NETWR,
+      TOTAL1   TYPE VBRK-NETWR,
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING.
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS VALUE CHECK
+            DEFAULT 3000.
+**********************************************
+
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS,
+         102 TEXT-003, 107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT. "assignment to TYPE STRING drops trailing blanks
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+ WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+  SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+ TOTAL = TOTAL + SALES_STRU-NETWR.
+ENDLOOP.
+
+SKIP 1.
+WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.
+********************************************************************
+********************************************************************
+AT LINE-SELECTION.
+
+IF SY-LSIND > 1. " ensure SY-LSIND does not exceed 1
+ SY-LSIND = 1.
+ELSE.
+ TOTAL1 = 0.
+ KUNNR = SY-LISEL+9(10).  " extract customer code
+ NAME1 = SY-LISEL+20(35). " extract customer name
+
+ SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK INTO TABLE BILLS_TAB
+   WHERE KUNAG = KUNNR AND BUKRS = CCODE.
+
+ LOOP AT BILLS_TAB INTO BILLS_STRU.
+  BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+  TOTAL1 = TOTAL1 + BILLS_STRU-NETWR.
+  WRITE:/5(4) SY-TABIX, BILLS_STRU-VBELN, BILLS_STRU-FKDAT,
+   BILLS_STRU-WAERK, (15) BILLS_STRU-NETWR.
+ ENDLOOP.
+
+ SKIP 1.
+ WRITE:/38(15) TOTAL1.
+ENDIF.
+*******************************************************************
+*******************************************************************
+TOP-OF-PAGE DURING LINE-SELECTION. " event for secondary list headers
+
+WRITE:/5 TEXT-011, 44 TEXT-003, 49(3) SY-PAGNO.
+WRITE:/5 KUNNR USING NO EDIT MASK NO-GAP, '/' NO-GAP, NAME1.
+WRITE:/5(48) SY-ULINE.
+WRITE:/5 TEXT-004, 10 TEXT-012, 21 TEXT-013, 32 TEXT-014, 46 TEXT-008.
+WRITE:/6 TEXT-009, 32 TEXT-015.
+WRITE:/5(48) SY-ULINE.
+*******************************************************************

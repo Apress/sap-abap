@@ -1,0 +1,351 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_04A_LOCAL_INH_CLASS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  YCL_CH11_04A_LOCAL_INH_CLASS.
+
+********************************************************
+* Demo With Local Classes: Inheritance & Polymorphism **
+* (The Same Scenario As Was Employed To Demonstrate   **
+* Use Of Interface To Implement Polymorphism With     **
+* Some Extension)                                     **
+*                                                     **
+* Use Of Interface Is More Appropraite To The Scenario**
+********************************************************
+
+****************************************************************
+* declare two methods in a super class:                       **
+* (1) to get business partner address                         **
+* (2) to get business partner contacs (telephones)            **
+* dummy implementation of these two methods in the super class**
+*                                                             **
+* using the feature of INHERITANCE the two declared methods   **
+* in the super class are implemented in two different sub     **
+* classes of the super class:                                 **
+* (a total of four methods in two sub classes)                **
+*                                                             **
+* (1) method for customer address                             **
+* (2) method for customer contact                             **
+* (3) method for vendor address                               **
+* (4) method for vendor contact                               **
+*                                                             **
+* declare reference variables to create instance of super     **
+* class and two sub classes.                                  **
+* declare other data objects                                  **
+*                                                             **
+* on the SELECTION-SCREEN input:                              **
+* (1) business partner type: customer or vendor               **
+* (2) the customer/vendor code                                **
+* (3) information type: address or contact                    **
+*                                                             **
+* code for events INITIALIZATION & AT SELECTION-SCREEN OUTPUT **
+*                                                             **
+* create instances of two sub classes. as per SELECTION-SCREEN**
+* inputs, make upcasting assignments and call appropriate     **
+* method.                                                     **
+* check for exception/error.                                  **
+* if error, report error else output appropriate info.        **
+*                                                             **
+* exception raised using MESSAGE statement. subsequently      **
+* class based exception is covered                            **
+****************************************************************
+
+TYPES: TYP_PCODE(10)   TYPE C,
+       TYP_PNAME(35)   TYPE C,
+       TYP_PSTREET(35) TYPE C,
+       TYP_PCITY(35)   TYPE C,
+       TYP_PPIN(10)    TYPE C,
+       TYP_PTELE(16)   TYPE C,
+       TYP_PFAX(31)    TYPE C.
+
+****** super class GET_PARTNER_INFO DEFINITION *****
+CLASS GET_PARTNER_INFO DEFINITION.
+
+PUBLIC SECTION.
+  METHODS: GET_ADDRESS IMPORTING  VALUE(PCODE) TYPE TYP_PCODE
+                       EXPORTING  PNAME        TYPE TYP_PNAME
+                                  PSTREET      TYPE TYP_PSTREET
+                                  PCITY        TYPE TYP_PCITY
+                                  PPIN         TYPE TYP_PPIN
+                       EXCEPTIONS INVALID_CODE,
+
+           GET_CONTACT IMPORTING  VALUE(PCODE) TYPE TYP_PCODE
+                       EXPORTING  PNAME        TYPE TYP_PNAME
+                                  PTELE        TYPE TYP_PTELE
+                                  PFAX         TYPE TYP_PFAX
+                       EXCEPTIONS INVALID_CODE.
+PROTECTED SECTION.
+DATA:  KNA1        TYPE KNA1,
+       LFA1        TYPE LFA1.
+
+ENDCLASS.
+
+****** super class GET_PARTNER_INFO IMPLEMENTATION *****
+
+CLASS GET_PARTNER_INFO IMPLEMENTATION. "super class
+
+  METHOD GET_ADDRESS.
+
+  ENDMETHOD.
+
+  METHOD GET_CONTACT.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+********** sub class GET_CUST_INFO DEFINITION *****
+CLASS GET_CUST_INFO DEFINITION INHERITING FROM GET_PARTNER_INFO.
+ PUBLIC SECTION.
+ METHODS: GET_ADDRESS REDEFINITION, GET_CONTACT REDEFINITION.
+ENDCLASS.
+
+********** sub class GET_CUST_INFO MPLEMENTATION ******
+CLASS GET_CUST_INFO IMPLEMENTATION.
+
+ METHOD GET_ADDRESS.  "re-implemented
+  SELECT SINGLE * FROM KNA1 INTO KNA1 WHERE KUNNR = PCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S036(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH PCODE.
+  ENDIF.
+
+  PNAME    = KNA1-NAME1.
+  PSTREET  = KNA1-STRAS.
+  PCITY    = KNA1-ORT01.
+  PPIN     = KNA1-PSTLZ.
+ ENDMETHOD.
+
+ METHOD GET_CONTACT. "re-implemented
+  SELECT SINGLE * FROM KNA1 INTO KNA1 WHERE KUNNR = PCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S036(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH PCODE.
+  ENDIF.
+
+  PTELE = KNA1-TELF1.
+  PFAX  = KNA1-TELFX.
+  PNAME = KNA1-NAME1.
+ ENDMETHOD.
+
+ENDCLASS.
+
+***** sub class GET_VEND_INFO DEFINITION *****
+CLASS GET_VEND_INFO DEFINITION INHERITING FROM GET_PARTNER_INFO.
+
+ PUBLIC SECTION.
+ METHODS: GET_ADDRESS REDEFINITION, GET_CONTACT REDEFINITION.
+
+ENDCLASS.
+
+***** sub class GET_VEND_INFO IMPLEMENTATION *****
+CLASS GET_VEND_INFO IMPLEMENTATION.
+
+ METHOD GET_ADDRESS. "re-implementation
+  SELECT SINGLE * FROM LFA1 INTO LFA1 WHERE LIFNR = PCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S037(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH PCODE.
+  ENDIF.
+
+  PNAME    = LFA1-NAME1.
+  PSTREET  = LFA1-STRAS.
+  PCITY    = LFA1-ORT01.
+  PPIN     = LFA1-PSTLZ.
+ ENDMETHOD.
+
+ METHOD GET_CONTACT. "re-implementation
+  SELECT SINGLE * FROM LFA1 INTO LFA1 WHERE LIFNR = PCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S037(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH PCODE.
+  ENDIF.
+
+  PTELE = LFA1-TELF1.
+  PFAX  = LFA1-TELFX.
+  PNAME = LFA1-NAME1.
+ ENDMETHOD.
+
+ENDCLASS.
+****************************************************
+****************************************************
+TABLES: KNA1,LFA1.
+DATA: CUST_INFO       TYPE REF TO GET_CUST_INFO,
+      VEND_INFO       TYPE REF TO GET_VEND_INFO,
+      PARTNER_INFO    TYPE REF TO GET_PARTNER_INFO,
+      PARTNER_TP(1)   TYPE C VALUE 'C',
+      PCODE(10)       TYPE C,
+      NAME1           TYPE KNA1-NAME1,
+      STRAS           TYPE KNA1-STRAS,
+      ORT01           TYPE KNA1-ORT01,
+      PSTLZ           TYPE KNA1-PSTLZ,
+      TELF1           TYPE KNA1-TELF1,
+      TELFX           TYPE KNA1-TELFX.
+*********************************************************
+*********************************************************
+SELECTION-SCREEN SKIP 1.
+SELECTION-SCREEN BEGIN OF BLOCK BL1 WITH FRAME TITLE TL1 NO INTERVALS.
+  SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN BEGIN OF BLOCK BL1A WITH FRAME TITLE TL1A.
+   SELECTION-SCREEN SKIP 1.
+
+   SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS: CUST RADIOBUTTON GROUP GR1 USER-COMMAND
+     PART_TYPE DEFAULT 'X'.
+    SELECTION-SCREEN COMMENT 3(20) COM1A.
+    PARAMETERS: VEND RADIOBUTTON GROUP GR1.
+    SELECTION-SCREEN COMMENT 26(20) COM1B.
+   SELECTION-SCREEN END OF LINE.
+
+   SELECTION-SCREEN SKIP 1.
+   SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 5(18) COM11 MODIF ID CG1.
+    PARAMETERS: CUST_CD LIKE KNA1-KUNNR MODIF ID CG1.
+    ", VEND_CD LIKE LFA1-LIFNR.
+   SELECTION-SCREEN END OF LINE.
+
+   SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 5(18) COM12 MODIF ID CG2.
+    PARAMETERS:  VEND_CD LIKE LFA1-LIFNR MODIF ID CG2.
+   SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN END OF BLOCK BL1A.
+
+  SELECTION-SCREEN SKIP 1.
+
+  SELECTION-SCREEN BEGIN OF BLOCK BL2 WITH FRAME TITLE TL2.
+   SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN BEGIN OF LINE.
+   PARAMETERS: ADDR RADIOBUTTON GROUP GRP.
+   SELECTION-SCREEN COMMENT 3(12) COM2.
+   PARAMETERS: CONT RADIOBUTTON GROUP GRP.
+   SELECTION-SCREEN COMMENT 18(19) COM3.
+  SELECTION-SCREEN END OF LINE.
+ SELECTION-SCREEN END OF BLOCK BL2.
+SELECTION-SCREEN END OF BLOCK BL1.
+***********************************
+***********************************
+INITIALIZATION.
+TL1   = '----- Input Partner Spec And Information Type -----'(001).
+TL1A  = '----- Partner Spec -----'(002).
+TL2   = '----- Information Type -----'(003).
+COM11 = 'Customer Code:'(004).
+COM12 = 'Vendor Code:'(005).
+COM1A = 'Customer Info:'(006).
+COM1B = 'Vendor Info:'(007).
+COM2 = 'Address:'(008).
+COM3 = 'Telephone Contacts:'(009).
+*********************************************************
+*********************************************************
+AT SELECTION-SCREEN OUTPUT.
+
+IF CUST = 'X'.
+ PARTNER_TP = 'C'.
+ELSE.
+ PARTNER_TP = 'V'.
+ENDIF.
+
+LOOP AT SCREEN .
+IF SCREEN-GROUP1 <> 'CG1' AND SCREEN-GROUP1 <> 'CG2'.
+ CONTINUE.
+ENDIF.
+
+IF ( SCREEN-GROUP1 = 'CG1' AND PARTNER_TP = 'C' )
+  OR ( SCREEN-GROUP1 = 'CG2' AND PARTNER_TP = 'V' ).
+
+ SCREEN-INPUT     = 1.
+ SCREEN-ACTIVE    = 1.
+ SCREEN-INVISIBLE = 0.
+
+ELSEIF ( SCREEN-GROUP1 = 'CG1' AND PARTNER_TP <> 'C' )
+ OR ( SCREEN-GROUP1 = 'CG2' AND PARTNER_TP <> 'V' ).
+
+ SCREEN-INPUT     = 0.
+ SCREEN-ACTIVE    = 0.
+ SCREEN-INVISIBLE = 1.
+ENDIF.
+
+MODIFY SCREEN.
+
+ENDLOOP.
+*********************************************************
+*********************************************************
+START-OF-SELECTION.
+
+CREATE OBJECT CUST_INFO.
+CREATE OBJECT VEND_INFO.
+
+IF CUST = 'X'.
+ PCODE = CUST_CD.
+ PARTNER_INFO = CUST_INFO. " UP/WIDE CASTING
+ELSE.
+ PCODE = VEND_CD.
+ PARTNER_INFO = VEND_INFO. " UP/WIDE CASTING
+ENDIF.
+********************
+IF ADDR = 'X'.
+
+ CALL METHOD PARTNER_INFO->GET_ADDRESS
+  EXPORTING
+             PCODE    = PCODE
+  IMPORTING
+             PNAME    = NAME1
+             PSTREET  = STRAS
+             PCITY    = ORT01
+             PPIN     = PSTLZ
+  EXCEPTIONS
+             INVALID_CODE = 4.
+
+ IF SY-SUBRC <> 0.
+
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+          WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+          DISPLAY LIKE 'E'.
+
+ ELSE.
+
+ WRITE /5: PCODE USING NO EDIT MASK,
+           NAME1,
+           STRAS,
+           ORT01,
+           PSTLZ.
+
+ ENDIF.
+
+ELSE.
+
+ CALL METHOD PARTNER_INFO->GET_CONTACT
+  EXPORTING
+             PCODE    = PCODE
+  IMPORTING
+             PNAME    = NAME1
+             PTELE    = TELF1
+             PFAX     = TELFX
+  EXCEPTIONS
+             INVALID_CODE = 4.
+
+ IF SY-SUBRC <> 0.
+
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+          WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+          DISPLAY LIKE 'E'.
+
+ ELSE.
+
+ WRITE /5: PCODE USING NO EDIT MASK,
+            NAME1,
+            TELF1,
+            TELFX.
+
+ ENDIF.
+
+ENDIF.
+***************************************************************

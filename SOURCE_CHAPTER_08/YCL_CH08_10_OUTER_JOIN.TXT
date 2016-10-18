@@ -1,0 +1,64 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_10_OUTER_JOIN
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_10_OUTER_JOIN NO STANDARD PAGE HEADING
+       LINE-SIZE 100 LINE-COUNT 60.
+
+**********************************************************
+* OUTER JOIN With Customer Primary Data & Billing Docs. **
+**********************************************************
+
+**************************************
+* declare TYPES, DATA               **
+* input customer code - PARAMETERS  **
+*                                   **
+* INCLUDE heading                   **
+*                                   **
+* SELECT statement using OUTER JOIN **
+* into internal table for customer  **
+* less than or equal to input       **
+* customer                          **
+*                                   **
+* sort internal table on KUNNR      **
+*                                   **
+* output from internal table        **
+**************************************
+
+TYPES: BEGIN OF CUST_BILLS_TYPE,
+        KUNNR    TYPE KNA1-KUNNR,
+        NAME1    TYPE KNA1-NAME1,
+        LANDX    TYPE T005T-LANDX,
+        VBELN    TYPE VBRK-VBELN,
+        FKDAT    TYPE VBRK-FKDAT,
+       END OF CUST_BILLS_TYPE.
+
+
+DATA: CUST_BILLS TYPE STANDARD TABLE OF CUST_BILLS_TYPE
+                      WITH HEADER LINE.
+
+PARAMETERS: CUST_CD TYPE VBRK-KUNAG VALUE CHECK
+ DEFAULT '0000001000'.
+*************************************************
+INCLUDE YCL_CH08_08_HEADER_JOINS.
+
+START-OF-SELECTION.
+
+SELECT VW~KUNNR VW~NAME1 VW~LANDX TB~VBELN TB~FKDAT
+       INTO CORRESPONDING FIELDS OF TABLE CUST_BILLS
+       FROM ( YCL_CH05_KNAT5T AS VW
+       LEFT OUTER JOIN VBRK AS TB ON VW~MANDT   = TB~MANDT
+                            AND VW~KUNNR   = TB~KUNAG )
+       WHERE VW~KUNNR <= CUST_CD.
+
+*SORT CUST_BILLS BY KUNNR.
+
+LOOP AT CUST_BILLS.
+ WRITE:/5(5) SY-TABIX, CUST_BILLS-KUNNR USING NO EDIT MASK,
+   CUST_BILLS-NAME1, CUST_BILLS-LANDX, CUST_BILLS-VBELN,
+   CUST_BILLS-FKDAT.
+ENDLOOP.

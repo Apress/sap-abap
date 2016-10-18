@@ -1,0 +1,656 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH12_03_ALV_EVENTS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH12_03_ALV_EVENTS.
+
+***********************************************************
+* Customer Wise Sales Summary & Detail in ALV Grids With **
+* Serial Number in the Summary/First ALV Report:-        **
+*                                                        **
+***********************************************************
+
+***************************************************************************
+* I. declarations:                                                       **
+* ----------------                                                       **
+*                                                                        **
+* the following declaration necessary because reference variable         **
+* declared referring to local class LCLASS is before the class definition**
+* CLASS LCLASS DEFINITION DEFERRED.                                      **
+*                                                                        **
+* data declarations: (extra declrations in main program global area over **
+*                     previous program)                                  **
+*                                                                        **
+* (1) reference variable for instance of local class. local class        **
+*     contains all event handler methods.                                **
+*                                                                        **
+* (2) internal table to retrieve front-end ALV layout sort order specs.  **
+*     strictly, should be declared in the PRIVATE SECTION of local class.**
+*     being declared in main program global area as inside classes HEADER**
+*     LINE is not permitted. to highlight this, being declared in main   **
+*     program. this will be used to sort our customer wise sales summary **
+*     internal table to re-generate serial numbers.DDIC stru LVC_S_SORT. **
+*                                                                        **
+* (3) internal table to contain sort specifications to sort customer wise**
+*     sales summary internal table. the sort specs retrieved in (2) are  **
+*     to be converted to the structure of this form. DDIC stru           **
+*     ABAP_SORTORDER.                                                    **
+*     strictly, should be declared in the PRIVATE SECTION of local class.**
+*     being declared in main program global area as inside classes HEADER**
+*     LINE is not permitted.
+*                                                                        **
+* II. triggered events:                                                  **
+* ---------------------                                                  **
+*                                                                        **
+*                 DOUBLE_CLICK-to generate a detailed ALV report/output. **
+*                 triggered when user double clicks on first ALV report. **
+*                                                                        **
+*                 CLOSE-to close the detailed ALV report & navigate back **
+*                 to the first summary ALV Report.                       **
+*                 triggered when user closes the dialogue box container. **
+*                                                                        **
+*                 TOOLBAR-to place own button on ALV tool bar.           **
+*                 triggered before ALV appears.                          **
+*                                                                        **
+*                 USER_COMMAND-to react to pressing of own button on the **
+*                 the ALV tool bar.                                      **
+*                                                                        **
+*                 AFTER_USER_COMMAND-every time user clicks on any of    **
+*                 the ALV tool bar button, this event is triggered. used **
+*                 to re-generate the serial numbers you are incorporating**
+*                 in the first ALV report. this will happen every time   **
+*                 user changes the first ALV report layout.              **
+*                                                                        **
+* define local class LCLASS. declare event handler methods in the class  **
+* definition specifying the class, event name and importing parameters.  **
+*                                                                        **
+* III. data declarations - local class LCLASS (PRIVATE SECTION)          **
+* -------------------------------------------                            **
+*                                                                        **
+* (1) structure for billing documents.                                   **
+* (2) internal table for billing documents.                              **
+* (3) reference variable for instance of dialogue box container.         **
+* (4) reference variable for second instance of ALV grid.                **
+* (5) variable to contain caption/window title for second instance of    **
+*     ALV grid.                                                          **
+* (6) field catalogue internal table for second instance of ALV grid.    **
+* (7) structure for field catalogue.                                     **
+* (8) structure for appending own buttons to ALV tool bar. DDIC          **
+*     structure STB_BUTTON.                                              **
+* (9) store maximum width of actual output of NAME1                      **
+* (10) store maximum width of actual output of ORT01                      **
+* (11) internal table to retrieve, set front-end field catalogue.         **
+* (12) internal table - filtered-out rows. DDIC table type LVC_T_FIDX.   **
+*      (hashed table)                                                    **
+* (13) index variable to develop serial number                           **
+*                                                                        **
+* IV. implementation of event handler methods in local class LCLASS      **
+* -----------------------------------------------------------------      **
+*                                                                        **
+* method: DB_CLICK (for event DOUBLE_CLICK of first instance of ALV grid)**
+*                                                                        **
+*         - read customer wise sales summary internal table to retrieve  **
+*           customer code.                                               **
+*         - fetch billing documents of customer into internal table.     **
+*         - LOOP AT <billing docs internal table>  .. ENDLOOP to convert **
+*           amounts to currency of company code.                         **
+*         - generate default field catalogue for second instance of ALV  **
+*           grid.                                                        **
+*         - adjust default field catalogue for disabling summing of      **
+*           KURRF - the exchange rate field.                             **
+*         - assign caption for second instance of ALV grid.              **
+*         - create instance of dialogue box container.                   **
+*         - register event handler method CLOSE_DBOX for closing dialogue**
+*           box container.                                               **
+*         - create second instance of ALV grid.                          **
+*         - call method SET_TABLE_FOR_FIRST_DISPLAY for second instance  **
+*           of ALV grid.                                                 **
+*         - disable first instance of ALV grid.                          **
+*                                                                        **
+* method: CLOSE_DBOX (for event CLOSE of instance of dialogue box cont.  **
+*                                                                        **
+*         - call destructor method for instance of dialogue box cont.    **
+*         - enable first instance of ALV grid.                           **
+*                                                                        **
+* method: TOOL_BAR (for event TOOLBAR of first instance of ALV grid)     **
+*                                                                        **
+*         - create gap between button & button to be added.              **
+*         - add own button.                                              **
+*                                                                        **
+* method: GO_BACK (for event USER_COMMAND of first instance of ALV grid) **
+*                                                                        **
+*         - check value of E_UCOMM & if equal to 'BACK' navigate back    **
+*           to Selection Screen prompting for company code               **
+*                                                                        **
+* method: ADJUST_SRL_NO (for event AFTER_USER_COMMAND of first instance  **
+*                        of ALV grid)                                    **
+*                                                                        **
+*         - initialize internal tables used in the method.               **
+*         - REFRESH first instance of ALV grid to retrieve latest        **
+*           output layout settings.                                      **
+*         - retrieve the rows to be filtered out as per settings.        **
+*         - retrieve sort settings.                                      **
+*         - convert sort settings.                                       **
+*         - initialize SRL_NO field in sales summary internal table      **
+*         - mark rows in customer wise sales summary internal table for  **
+*           which serial numbers to be generated. (rows not to be        **
+*           filtered out)                                                **
+*         - sort customer wise sales summary internal table with the     **
+*           previous step converted sort settings/specs.                 **
+*         - re-generate serial numbers. obtain maximum width of actual   **
+*           data for fields NAME1 & ORT01                                **
+*         - adjust front-end field catalogue (GET.. SET... )             **
+*           adjust output lengths for KUNNR, NAME1 & ORT01.              **
+*           for KUNNR EDIT_MASK: '==ALZSN', CONVEXIT: = ' ',             **
+*           NO_CONVEXT = 'X'. for SRL_NO NO_SUM = 'X'.                   **
+*                                                                        **
+* V. incorporations in PBO (just after creation of first instance of ALV **
+*                          grid)                                         **
+*                                                                        **
+*         - create instance of local class.                              **
+*         - register the event handler methods DB_CLICK, TOOL_BAR,       **
+*           GO_BACK, ADJUST_SRLNO.                                       **
+*         - execute the method ADJUST_SRLNO (for default layout if any)  **
+*                                                                        **
+***************************************************************************
+
+CLASS LCLASS DEFINITION DEFERRED.
+
+DATA: SALES_TAB  TYPE YCL_CH12_SALES_SUM_TAB1,
+      SALES_STRU TYPE YCL_CH12_SALES_SUM_STRU1, " contains KURRF & SRL_NO
+
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS,
+
+      OK_CODE    TYPE SY-UCOMM,
+      CCONTR     TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+       " reference variable for instance of custom container
+      ALV_GRID1  TYPE REF TO CL_GUI_ALV_GRID.
+       " reference variable for instance of ALV grid
+
+DATA: DVARIANT   TYPE DISVARIANT, " for saving layouts
+      LAYOUT     TYPE LVC_S_LAYO, " overall grid appearance
+      FCAT1      TYPE LVC_T_FCAT WITH HEADER LINE, " field catalogue
+      CLR(1)     TYPE N.
+
+**** DATA addition to prev. prog.
+DATA: LREF      TYPE REF TO LCLASS, " reference variable-local class
+      SORT_TAB  TYPE LVC_T_SORT WITH HEADER LINE, " ALV sort entries
+      BYS       TYPE ABAP_SORTORDER_TAB WITH HEADER LINE.
+         " internal table for run time spec of internal table sorting
+
+
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000.
+
+**** addition to prev. prog. start *****
+
+*******************************************
+* local class definition, implementation **
+*******************************************
+
+***** class definition *****
+
+CLASS LCLASS DEFINITION.
+
+PUBLIC SECTION.
+
+***** event handler methods in local class *****
+
+METHODS:  DB_CLICK FOR EVENT DOUBLE_CLICK OF CL_GUI_ALV_GRID
+            IMPORTING E_ROW E_COLUMN,
+
+          CLOSE_DBOX FOR EVENT CLOSE OF CL_GUI_DIALOGBOX_CONTAINER,
+
+          TOOL_BAR FOR EVENT TOOLBAR OF CL_GUI_ALV_GRID
+            IMPORTING E_OBJECT E_INTERACTIVE,
+
+          GO_BACK FOR EVENT USER_COMMAND OF CL_GUI_ALV_GRID
+            IMPORTING E_UCOMM,
+
+          ADJUST_SRL_NO FOR EVENT AFTER_USER_COMMAND OF CL_GUI_ALV_GRID
+            IMPORTING E_UCOMM E_SAVED E_NOT_PROCESSED.
+
+
+PRIVATE SECTION.
+
+DATA: BILLS_STRU   TYPE YCL_CH12_BILLS_STRU,
+      BILLS_TAB    TYPE STANDARD TABLE OF YCL_CH12_BILLS_STRU,
+      DCONT     TYPE REF TO CL_GUI_DIALOGBOX_CONTAINER,
+         " reference variable for instance of dialogue box container
+      ALV_GRID2 TYPE REF TO CL_GUI_ALV_GRID,
+         " reference variable for second instance of ALV grid
+      CAPTON(70)   TYPE C,
+      FCAT2        TYPE LVC_T_FCAT,
+      FSTRU        TYPE LVC_S_FCAT,
+      TOOL_STRU    TYPE STB_BUTTON, " stru for ALV tool bar
+      NAME1_LEN    TYPE I, " max length NAME1
+      ORT01_LEN    TYPE I, " max length ORT01
+      TFCAT        TYPE LVC_T_FCAT,
+      FL_ENTS      TYPE LVC_T_FIDX, " rows filtered out
+      INDEX        TYPE YCL_CH12_SRL_NO. " to generate serial no.
+
+ENDCLASS.
+
+***** class implementation *****
+
+CLASS LCLASS IMPLEMENTATION.
+
+****** DB_CLICK *****
+
+METHOD DB_CLICK.
+
+ CHECK E_ROW-ROWTYPE IS INITIAL. " double clicking is on a customer
+                                 " line, not subtotal/total line
+ READ TABLE SALES_TAB INTO SALES_STRU INDEX E_ROW-INDEX
+   TRANSPORTING KUNNR.
+
+ SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK
+  INTO TABLE BILLS_TAB WHERE KUNAG = SALES_STRU-KUNNR
+  AND BUKRS = CCODE.
+
+ LOOP AT BILLS_TAB INTO BILLS_STRU.
+  BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+  MODIFY BILLS_TAB FROM BILLS_STRU.
+ ENDLOOP.
+
+ CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+  EXPORTING
+    I_STRUCTURE_NAME             = 'YCL_CH12_BILLS_STRU'
+   CHANGING
+     CT_FIELDCAT                 = FCAT2
+  EXCEPTIONS
+    INCONSISTENT_INTERFACE       = 1
+    PROGRAM_ERROR                = 2
+    OTHERS                       = 3
+           .
+ IF SY-SUBRC <> 0.
+   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ LOOP AT FCAT2 INTO FSTRU.
+  FSTRU-COL_OPT = 'X'.
+  IF FSTRU-FIELDNAME = 'KURRF'.
+   FSTRU-NO_SUM = 'X'. " no sum for KURRF
+  ENDIF.
+  IF FSTRU-FIELDNAME = 'NETWR'.
+   FSTRU-DO_SUM = 'X'. " no sum for KURRF
+  ENDIF.
+  MODIFY FCAT2 FROM FSTRU.
+ ENDLOOP.
+
+ CONCATENATE TEXT-001 SALES_STRU-KUNNR '/' SALES_STRU-NAME1 INTO CAPTON.
+
+ CREATE OBJECT DCONT
+   EXPORTING
+     WIDTH                       = 420  " unit/dimension is points
+     HEIGHT                      = 200  " a point = 1/72 of inch
+     TOP                         = 35
+     LEFT                        = 550
+     CAPTION                     = CAPTON
+   EXCEPTIONS
+     CNTL_ERROR                  = 1
+     CNTL_SYSTEM_ERROR           = 2
+     CREATE_ERROR                = 3
+     LIFETIME_ERROR              = 4
+     LIFETIME_DYNPRO_DYNPRO_LINK = 5
+     EVENT_ALREADY_REGISTERED    = 6
+     ERROR_REGIST_EVENT          = 7
+     others                      = 8
+    .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ SET HANDLER LREF->CLOSE_DBOX FOR DCONT.
+   " registration of 'CLOSE_DBOX’ handler method for instance DCONT
+ CREATE OBJECT ALV_GRID2
+   EXPORTING
+    I_PARENT  = DCONT.
+
+ CALL METHOD ALV_GRID2->SET_TABLE_FOR_FIRST_DISPLAY
+   CHANGING
+     IT_OUTTAB                     = BILLS_TAB
+     IT_FIELDCATALOG               = FCAT2.
+
+ CALL METHOD ALV_GRID1->SET_ENABLE
+  EXPORTING
+  ENABLE = ' '.
+ENDMETHOD.
+
+**********************
+METHOD CLOSE_DBOX.
+ CALL METHOD DCONT->FREE( ).
+
+ CALL METHOD ALV_GRID1->SET_ENABLE
+   EXPORTING
+    ENABLE = 'X'.
+
+ENDMETHOD.
+***********************
+
+METHOD TOOL_BAR.
+
+ CLEAR TOOL_STRU.
+ TOOL_STRU-BUTN_TYPE = 3.
+  " create gap last - existing button & own button
+
+ APPEND TOOL_STRU TO E_OBJECT->MT_TOOLBAR.
+ CLEAR TOOL_STRU.
+
+ TOOL_STRU-FUNCTION   = 'BACK'. " function code
+ TOOL_STRU-ICON       = '@CF@'. " icon code
+ TOOL_STRU-QUICKINFO  = 'Back'(002). " button tool tip
+ TOOL_STRU-TEXT       = 'Back'(002). " button text
+
+ APPEND TOOL_STRU TO E_OBJECT->MT_TOOLBAR.
+
+ENDMETHOD.
+
+************************
+METHOD GO_BACK.
+ IF E_UCOMM = 'BACK'.
+
+  SET SCREEN 0. " these two statements retturn
+  LEAVE SCREEN. " control to PARAMETERS prompt
+
+ ENDIF.
+ENDMETHOD.
+****************************
+
+METHOD ADJUST_SRL_NO.
+
+ REFRESH: FL_ENTS, SORT_TAB, BYS.
+
+ ALV_GRID1->REFRESH_TABLE_DISPLAY( ).
+
+***** rows to be filtered out *****
+
+ CALL METHOD ALV_GRID1->GET_FILTERED_ENTRIES
+   IMPORTING
+     ET_FILTERED_ENTRIES = FL_ENTS
+      .
+***** rows to be filtered out over *****
+
+ CALL METHOD ALV_GRID1->GET_SORT_CRITERIA
+   IMPORTING
+     ET_SORT = SORT_TAB[].
+
+
+***** convert sort specs *****
+
+ SORT SORT_TAB BY SPOS. " sort in order of sort sequence
+ LOOP AT SORT_TAB INTO SORT_TAB.
+  BYS-NAME = SORT_TAB-FIELDNAME.
+  IF SORT_TAB-DOWN IS NOT INITIAL.
+   BYS-DESCENDING = 'X'.
+  ELSE.
+   BYS-DESCENDING = ' '.
+
+  ENDIF.
+  APPEND BYS TO BYS.
+ ENDLOOP.
+***** convert sort specs over *****
+
+***** mark rows for which serial numbers to be generated *****
+** rows for which serial numbers to be generated assigned non-zero **
+
+ INDEX = 0.
+
+ CLEAR SALES_STRU-SRL_NO.
+ MODIFY SALES_TAB FROM SALES_STRU TRANSPORTING SRL_NO
+  WHERE SRL_NO <> 0.
+
+ LOOP AT SALES_TAB INTO SALES_STRU.
+
+  READ TABLE FL_ENTS FROM SY-TABIX TRANSPORTING NO FIELDS.
+  IF SY-SUBRC = 0. " if row is in to-be-filtered-out internal
+   CONTINUE.       " table, bypass for serial number generation
+  ENDIF.
+  INDEX = INDEX + 1.
+  SALES_STRU-SRL_NO = INDEX.
+  MODIFY SALES_TAB FROM SALES_STRU TRANSPORTING SRL_NO.
+ ENDLOOP.
+
+ SORT SALES_TAB BY (BYS). " BYS contains run time sort specs
+
+ INDEX = 0.
+
+*****  generate serial numbers **
+ NAME1_LEN = 0.
+ ORT01_LEN = 0.
+
+ LOOP AT SALES_TAB INTO SALES_STRU.
+
+  IF SALES_STRU-SRL_NO = 0.
+   CONTINUE.
+  ENDIF.
+  INDEX = INDEX + 1.
+  SALES_STRU-SRL_NO = INDEX.
+  MODIFY SALES_TAB FROM SALES_STRU.
+
+  " obtaining the maximum width of output: NAME1 & ORT01
+
+  IF STRLEN( SALES_STRU-NAME1 ) > NAME1_LEN.
+   NAME1_LEN = STRLEN( SALES_STRU-NAME1 ).
+  ENDIF.
+
+  IF STRLEN( SALES_STRU-ORT01 ) > ORT01_LEN.
+   ORT01_LEN = STRLEN( SALES_STRU-ORT01 ).
+  ENDIF.
+
+ ENDLOOP.
+
+***** adjust front-end field catalogue *****
+
+ ALV_GRID1->GET_FRONTEND_FIELDCATALOG( IMPORTING ET_FIELDCATALOG = TFCAT ).
+" get/retrieve front-end field catalogue
+ LOOP AT TFCAT INTO FSTRU.
+
+  CASE FSTRU-FIELDNAME.
+
+  WHEN 'KUNNR'.
+
+   FSTRU-EDIT_MASK = '==ALZSN'.
+   FSTRU-CONVEXIT  = ' '.
+   FSTRU-NO_CONVEXT  = 'X'.
+   FSTRU-COL_OPT = 'X'.
+
+  WHEN  'NAME1'.
+   FSTRU-OUTPUTLEN = NAME1_LEN.
+  WHEN  'ORT01'.
+   FSTRU-OUTPUTLEN = ORT01_LEN.
+  WHEN OTHERS.
+   FSTRU-COL_OPT = 'X'.
+  ENDCASE.
+  IF FSTRU-FIELDNAME = 'SRL_NO'.
+   FSTRU-NO_SUM = 'X'.  " no totaling for serial nos.
+  ENDIF.
+
+  MODIFY TFCAT FROM FSTRU.
+
+ ENDLOOP.
+
+ ALV_GRID1->SET_FRONTEND_FIELDCATALOG( IT_FIELDCATALOG = TFCAT[] ).
+" set front-end field catalogue
+
+ENDMETHOD.
+
+*****************************************
+ENDCLASS.
+
+**** addition to prev. prog. end *****
+
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0.
+ COLLECT SALES_STRU INTO SALES_TAB.
+
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+***** generate initial serial no. ******
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+  SALES_STRU-SRL_NO = SY-TABIX.
+* TRANSLATE SALES_STRU-NAME1 TO UPPER CASE.
+* TRANSLATE SALES_STRU-ORT01 TO UPPER CASE.
+ MODIFY SALES_TAB FROM SALES_STRU.
+ENDLOOP.
+
+CALL SCREEN 100. " screen 100 will be loaded
+
+**************************************************************
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.  " PBO module
+* SET PF-STATUS 'STAT1'.
+ SET TITLEBAR 'TITLE1' WITH CCODE BUTXT WAERS.
+
+ CREATE OBJECT CCONTR   " create instance of custom container
+   EXPORTING
+     CONTAINER_NAME              = 'CUST_CONTT' " name of custom control
+   EXCEPTIONS
+     CNTL_ERROR                  = 1
+     CNTL_SYSTEM_ERROR           = 2
+     CREATE_ERROR                = 3
+     LIFETIME_ERROR              = 4
+     LIFETIME_DYNPRO_DYNPRO_LINK = 5
+     others                      = 6
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ CREATE OBJECT ALV_GRID1 " create instance of ALV grid
+   EXPORTING
+     I_PARENT          = CCONTR " reference to instance of custom container
+   EXCEPTIONS
+     ERROR_CNTL_CREATE = 1
+     ERROR_CNTL_INIT   = 2
+     ERROR_CNTL_LINK   = 3
+     ERROR_DP_CREATE   = 4
+     others            = 5
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+**** addition to prev. prog. start *****
+
+ CREATE OBJECT LREF.
+***** registration of handler methods ****
+ SET HANDLER LREF->DB_CLICK FOR ALV_GRID1.
+ SET HANDLER LREF->TOOL_BAR FOR ALV_GRID1.
+ SET HANDLER LREF->GO_BACK FOR ALV_GRID1.
+ SET HANDLER LREF->ADJUST_SRL_NO FOR ALV_GRID1.
+
+**** addition to prev. prog. end *****
+
+
+ DVARIANT-REPORT = 'YCL_CH12_03_ALV_EVENTS'.
+* DVARIANT-VARIANT = 'LAYOUT1'.
+* DVARIANT-USERNAME = SY-UNAME.
+
+ CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+  EXPORTING
+     I_STRUCTURE_NAME         = 'YCL_CH12_SALES_SUM_STRU2'
+                                 " contains SRL_NO & not KURRF
+   CHANGING
+     CT_FIELDCAT              = FCAT1[]
+  EXCEPTIONS
+    INCONSISTENT_INTERFACE    = 1
+    PROGRAM_ERROR             = 2
+    OTHERS                    = 3
+           .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ LOOP AT FCAT1.
+  CLR = CLR + 1.
+  CONCATENATE 'C' CLR '10' INTO FCAT1-EMPHASIZE.
+*  FCAT1-COL_OPT = 'x'.
+  IF FCAT1-FIELDNAME = 'KUNNR'.
+   FCAT1-NO_CONVEXT = 'X'.
+   FCAT1-CONVEXIT = ' '.
+   FCAT1-EDIT_MASK = ' '.
+   FCAT1-COL_OPT = ' '.
+  ENDIF.
+  IF FCAT1-FIELDNAME = 'SRL_NO'.
+   FCAT1-NO_SUM = 'X'.
+  ENDIF.
+  IF FCAT1-FIELDNAME = 'NETWR'.
+   FCAT1-DO_SUM = 'X'. " sum for NETWR
+  ENDIF.
+
+  MODIFY FCAT1.
+ ENDLOOP.
+
+***** populate, display instance of ALV grid *****
+
+LAYOUT-COL_OPT = 'X'.
+
+
+ CALL METHOD ALV_GRID1->SET_TABLE_FOR_FIRST_DISPLAY
+   EXPORTING
+     IS_VARIANT                  = DVARIANT
+     I_SAVE                      = 'U'
+     IS_LAYOUT                   = LAYOUT
+*     I_DEFAULT                   = 'X'
+*     I_STRUCTURE_NAME              = 'YCL_CH12_SALES_SUM_STRU1'
+   CHANGING
+     IT_OUTTAB                   = SALES_TAB
+     IT_FIELDCATALOG             = FCAT1[]
+   EXCEPTIONS
+     INVALID_PARAMETER_COMBINATION = 1
+     PROGRAM_ERROR                 = 2
+     TOO_MANY_LINES                = 3
+     others                        = 4
+         .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ LREF->ADJUST_SRL_NO( ).
+ ALV_GRID1->REFRESH_TABLE_DISPLAY( ).
+
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT. " PAI module
+
+*IF OK_CODE = 'BACK'.
+* SET SCREEN 0. " these two statements return
+* LEAVE SCREEN. " control to PARAMETERS prompt
+*ENDIF.
+
+ENDMODULE.                 " USER_COMMAND_0100  INPUT

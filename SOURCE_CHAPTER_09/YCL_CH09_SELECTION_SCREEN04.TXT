@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN04
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN04.
+
+****************************************************************
+* Demo AT SELECTION-SCREEN ON VALUE-REQUEST FOR <field> Event **
+****************************************************************
+
+SELECTION-SCREEN BEGIN OF BLOCK BL1 WITH FRAME TITLE
+  TEXT-001.
+
+SELECTION-SCREEN SKIP 2.
+PARAMETERS FOLDER(50)  TYPE C.
+
+SELECTION-SCREEN SKIP 2.
+SELECTION-SCREEN END OF BLOCK BL1.
+************************************************
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR FOLDER.
+
+CALL FUNCTION 'TMP_GUI_BROWSE_FOR_FOLDER'
+ EXPORTING
+   WINDOW_TITLE          = 'Select Folder'
+*   INITIAL_FOLDER        =
+ IMPORTING
+   SELECTED_FOLDER       = FOLDER
+ EXCEPTIONS
+   CNTL_ERROR            = 1
+   OTHERS                = 2
+          .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ELSE.
+ MESSAGE S012(YCL_CH07_MCLASS01) WITH FOLDER.
+
+ENDIF.
+***********************************

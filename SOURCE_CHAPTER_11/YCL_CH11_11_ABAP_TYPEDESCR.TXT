@@ -1,0 +1,102 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_11_ABAP_TYPEDESCR
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_11_ABAP_TYPEDESCR NO STANDARD PAGE HEADING.
+
+******************************************************************
+* Use CL_ABAP_TYPEDESCR to Determine TYPE, Length, Decimals etc.**
+* Use CL_ABAP_STRUCTDESCR to Determine structure components     **
+* Use CL_ABAP_TABLEDESCR to Determine Internal Table Attributes **
+******************************************************************
+
+TYPE-POOLS ABAP.
+
+DATA: ABAP_REF  TYPE REF TO CL_ABAP_TYPEDESCR,
+      STRU_REF  TYPE REF TO CL_ABAP_STRUCTDESCR,
+      TAB_REF   TYPE REF TO CL_ABAP_TABLEDESCR,
+      DREF      TYPE REF TO DATA,
+      ABAP_TYPE TYPE ABAP_BOOL,
+      FWA       TYPE LINE OF ABAP_COMPDESCR_TAB,
+      STR_TAB   TYPE STRING_TABLE.
+
+FIELD-SYMBOLS: <FS1>.
+****************************************************
+PARAMETERS: DATA_IT(30) TYPE C
+  DEFAULT 'VBRP-NETWR'.
+****************************************************
+START-OF-SELECTION.
+
+CREATE DATA DREF TYPE (DATA_IT). " RTTC - dynamic creation of
+                                 " elementary data object
+ASSIGN DREF->* TO <FS1>. "de-referencing
+
+*********elementary: by data*********
+ABAP_REF = CL_ABAP_TYPEDESCR=>DESCRIBE_BY_DATA( <FS1> ).
+" RTTI - call static method, get reference/instance getting created
+
+IF ABAP_REF->KIND = 'E'.
+
+    " elementary - not structure, internal table type
+
+ WRITE: /5 'METHOD:DESCRIBE_BY_DATA'.
+ WRITE: /5 'TYPE        :', (1) ABAP_REF->TYPE_KIND, "attribute
+        /5 'LENGTH      :', (4) ABAP_REF->LENGTH LEFT-JUSTIFIED, "attribute
+        /5 'DECIMALS    :', (2) ABAP_REF->DECIMALS LEFT-JUSTIFIED. "attribute
+
+ ABAP_TYPE = ABAP_REF->IS_DDIC_TYPE( ).
+ WRITE:/5 'IS DDIC TYPE:', ABAP_TYPE.
+
+********elementary: by name**************
+ ABAP_REF = CL_ABAP_TYPEDESCR=>DESCRIBE_BY_NAME( DATA_IT ).
+ " RTTI - call static method, get reference/instance getting created
+
+ SKIP 2.
+ WRITE: /5 'METHOD:DESCRIBE_BY_NAME'.
+ WRITE: /5 'TYPE        :', (1) ABAP_REF->TYPE_KIND, "attribute
+        /5 'LENGTH      :', (4) ABAP_REF->LENGTH LEFT-JUSTIFIED, "attribute
+        /5 'DECIMALS    :', (2) ABAP_REF->DECIMALS LEFT-JUSTIFIED. "attribute
+
+ ABAP_TYPE = ABAP_REF->IS_DDIC_TYPE( ).
+ WRITE:/5 'IS DDIC TYPE:', ABAP_TYPE.
+
+*******elementary: by data reference***************
+ ABAP_REF = CL_ABAP_TYPEDESCR=>DESCRIBE_BY_DATA_REF( DREF ).
+ " RTTI - call static method, get reference/instance getting created
+
+ SKIP 2.
+ WRITE: /5 'METHOD:DESCRIBE_BY_DATA_REF '.
+ WRITE: /5 'TYPE        :', (1) ABAP_REF->TYPE_KIND, "attribute
+        /5 'LENGTH      :', (4) ABAP_REF->LENGTH LEFT-JUSTIFIED, "attribute
+        /5 'DECIMALS    :', (2) ABAP_REF->DECIMALS LEFT-JUSTIFIED. "attribute
+
+ ABAP_TYPE = ABAP_REF->IS_DDIC_TYPE( ).
+ SKIP 1.
+ WRITE:/5 'IS DDIC TYPE:', ABAP_TYPE.
+
+************flat structure: by data***************
+ELSEIF ABAP_REF->TYPE_KIND = 'u'. "structure
+
+ ABAP_REF = CL_ABAP_STRUCTDESCR=>DESCRIBE_BY_DATA( <FS1> ).
+ STRU_REF ?= ABAP_REF. " down/narrow casting with ?= operator
+
+ LOOP AT STRU_REF->COMPONENTS INTO FWA.
+  WRITE:/5(4) SY-TABIX, FWA-NAME, FWA-TYPE_KIND, FWA-LENGTH,
+    FWA-DECIMALS.
+ ENDLOOP.
+
+ELSEIF ABAP_REF->TYPE_KIND = 'h'. " internal table
+
+************internal table: by data***************
+ ABAP_REF = CL_ABAP_TABLEDESCR=>DESCRIBE_BY_DATA( <FS1> ).
+ TAB_REF ?= ABAP_REF. " down/narrow casting with ?= operator
+ WRITE: /5 'METHOD:DESCRIBE_BY_DATA_REF '.
+ WRITE: /5 'TABLE KIND  :', (1) TAB_REF->TABLE_KIND, "attribute
+        /5 'KEY DEFINED :', (4) TAB_REF->KEY_DEFKIND, "attribute
+        /5 'UNIQUE KEY  :', (2) TAB_REF->HAS_UNIQUE_KEY. "attribute
+
+ENDIF.

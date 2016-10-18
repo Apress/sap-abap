@@ -1,0 +1,89 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB05
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB05 LINE-SIZE 120 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+********************************************************
+* Customer Wise Sales Summary of a company code using **
+* COLLECT statement                                   **
+********************************************************
+**********************************************************
+* declare internal table by reference to DDIC table     **
+* type. declare structure by reference to internal      **
+* table                                                 **
+*                                                       **
+* PARAMETERS to input company code                      **
+* SELECT SINGLE.. to fetch company code name(BUTXT)     **
+* operating currency of company code WAERS              **
+*                                                       **
+* SELECT...ENDSELECT to fetch rows from database view   **
+* multiply NETWR KURRF to convert NETWR to operating    **
+* currency. initialize KURRF to 0 after multiplication  **
+* to prevent KURRF accumulation overflow.               **
+* issue COLLECT                                         **
+*                                                       **
+* at end of SELECT...ENDSELECT, summary table created   **
+*                                                       **
+* sort summary internal table by KUNNR                  **
+*                                                       **
+* set up LOOP...WRITE...ENDLOOP                         **
+*                                                       **
+* end of LOOP.. WRITE...ENDLOOP output grand total      **
+**********************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB, "key word TYPE only
+      SALES_STRU LIKE LINE OF SALES_TAB, " declare structure by
+                                         " referring to internal
+                                         " table
+
+      TOTAL    TYPE VBRK-NETWR,
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING.
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000.
+**********************************************
+
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS, 102 TEXT-003,
+         107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT. "assignment to TYPE STRING drops trailing blanks
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+ WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+  SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+ TOTAL = TOTAL + SALES_STRU-NETWR.
+ENDLOOP.
+
+SKIP 1.
+WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.

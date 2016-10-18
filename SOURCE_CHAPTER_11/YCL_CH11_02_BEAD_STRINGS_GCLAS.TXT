@@ -1,0 +1,54 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_02_BEAD_STRINGS_GCLAS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_02_BEAD_STRINGS_GCLAS.
+
+*********************************************
+* Use Method BEAD_STRINGS in Global Class: **
+* YCL_CH10_CL_STRING_OPERATIONS            **
+*********************************************
+
+DATA: CL_REF       TYPE REF TO YCL_CH11_CL_STRING_OPERATIONS,
+      RESULT       TYPE STRING,
+      STRING_TABL TYPE STRING_TABLE.
+
+
+START-OF-SELECTION.
+
+SELECT LTX FROM T247 INTO TABLE STRING_TABL
+  WHERE SPRAS = SY-LANGU.
+
+CREATE OBJECT CL_REF.
+
+*CALL METHOD CL_REF->BEAD_STRINGS
+*  EXPORTING
+*    STR_TAB   = STRING_TAB
+*    SEPARATOR = '-'
+*  RECEIVING
+*    STRNG     = RESULT
+*  EXCEPTIONS
+*    NO_DATA   = 1
+*    others    = 2
+*        .
+*IF SY-SUBRC <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+*ENDIF.
+
+
+RESULT = CL_REF->BEAD_STRINGS( STR_TAB   = STRING_TABL[]
+                                SEPARATOR = '-' ).
+IF SY-SUBRC <> 0.
+
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+         DISPLAY LIKE 'E'.
+ELSE.
+
+ WRITE:/5 RESULT.
+ENDIF.

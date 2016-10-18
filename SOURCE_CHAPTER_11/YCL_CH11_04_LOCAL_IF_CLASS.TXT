@@ -1,0 +1,264 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_04_LOCAL_IF_CLASS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_04_LOCAL_IF_CLASS.
+
+*****************************************************
+* Demo local INTERFACE (polymorphism) and syntaxes **
+*****************************************************
+
+***********************************************************
+* on the SELECTION-SCREEN input:                         **
+* (1) business partner/partner type: customer or vendor  **
+* (2) customer/vendor code                               **
+*                                                        **
+* using the feature of INTERFACE declared method and this**
+* method implemented in two different classes, the       **
+* address of customer/vendor is retrieved and output     **
+*                                                        **
+* same method in different classes gets different info   **
+*                                                        **
+* the method GET_ADDRESS in class GET_CUST_ADDR retrieves**
+* the customer address from database table KNA1          **
+*                                                        **
+* the method GET_ADDRESS in class GET_VEND_ADDR retrieves**
+* the vendor address from database table LFA1            **
+*                                                        **
+* the name, address fields: NAME1 STRAS ORT01 PSTLZ are  **
+* common/same in database tables KNA1 & LFA1             **
+*                                                        **
+* exception raised using MESSAGE statement. subsequently **
+* class based exception is covered                       **
+***********************************************************
+
+TYPES: TYP_BPCODE(10)  TYPE C. " business partner code TYPE
+
+CLASS: GET_CUST_ADDR DEFINITION DEFERRED, " CLASS yet to be defined
+       GET_VEND_ADDR DEFINITION DEFERRED. " ditto
+
+INTERFACE: IF_GET_PARTNER_ADDR DEFERRED.
+               " INTERFACE yet to be declared
+
+DATA: CUST_ADDR       TYPE REF TO GET_CUST_ADDR,
+                             " customer address
+
+      VEND_ADDR       TYPE REF TO GET_VEND_ADDR,
+                             " vendor address
+
+      IF_PARTNER_ADDR TYPE REF TO IF_GET_PARTNER_ADDR,
+
+      PARTNER_TP(1)   TYPE C VALUE 'C',
+      BPCODE          TYPE TYP_BPCODE,
+      NAME1           TYPE NAME1_GP,
+      STRAS           TYPE STRAS_GP,
+      ORT01           TYPE ORT01_GP,
+      PSTLZ           TYPE PSTLZ.
+
+
+********************* INTERFACE *************************
+
+INTERFACE IF_GET_PARTNER_ADDR.
+   "convention: start interface names with IF_
+
+  METHODS: GET_ADDRESS IMPORTING  VALUE(BPCODE) TYPE TYP_BPCODE
+                       EXPORTING  PNAME         TYPE NAME1_GP
+                                  PSTREET       TYPE STRAS_GP
+                                  PCITY         TYPE ORT01_GP
+                                  PPIN          TYPE PSTLZ
+                       EXCEPTIONS INVALID_CODE.
+
+ENDINTERFACE.
+
+****** class definition, implementation for customer info ******
+
+CLASS GET_CUST_ADDR DEFINITION. "custmer address
+
+ PUBLIC SECTION.
+  INTERFACES IF_GET_PARTNER_ADDR.
+             "interfaces used by class specified
+
+ PRIVATE SECTION.
+   DATA:  KNA1            TYPE KNA1.
+
+ENDCLASS.
+
+CLASS GET_CUST_ADDR IMPLEMENTATION.
+
+ METHOD IF_GET_PARTNER_ADDR~GET_ADDRESS.
+  "qualifying interface method in this way with ~ (tilde)
+
+  SELECT SINGLE * FROM KNA1 INTO KNA1 WHERE KUNNR = BPCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S036(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH BPCODE.
+  ENDIF.
+
+  PNAME    = KNA1-NAME1.
+  PSTREET  = KNA1-STRAS.
+  PCITY    = KNA1-ORT01.
+  PPIN     = KNA1-PSTLZ.
+ ENDMETHOD.
+
+ENDCLASS.
+
+****** class definition, implementation for vendor info ******
+
+CLASS GET_VEND_ADDR DEFINITION.
+
+ PUBLIC SECTION.
+  INTERFACES IF_GET_PARTNER_ADDR.
+             "interfaces used by class specified like this
+
+ PRIVATE SECTION.
+  DATA:  LFA1 TYPE LFA1.
+
+ENDCLASS.
+
+CLASS GET_VEND_ADDR IMPLEMENTATION.
+
+ METHOD IF_GET_PARTNER_ADDR~GET_ADDRESS.
+  "qualifying interface method in this way with ~ (tilde)
+
+  SELECT SINGLE * FROM LFA1 INTO LFA1 WHERE LIFNR = BPCODE.
+
+  IF SY-SUBRC <> 0.
+   MESSAGE S037(YCL_CH07_MCLASS01) RAISING
+    INVALID_CODE WITH BPCODE.
+  ENDIF.
+
+  PNAME    = LFA1-NAME1.
+  PSTREET  = LFA1-STRAS.
+  PCITY    = LFA1-ORT01.
+  PPIN     = LFA1-PSTLZ.
+ ENDMETHOD.
+
+ENDCLASS.
+
+*********************
+* SELECTION-SCREEN **
+*********************
+
+SELECTION-SCREEN SKIP 1.
+
+SELECTION-SCREEN BEGIN OF BLOCK BL1 WITH FRAME TITLE
+  COM1 NO INTERVALS.
+
+SELECTION-SCREEN SKIP 1.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+   PARAMETERS: CUST RADIOBUTTON GROUP GR1 USER-COMMAND
+    PART_TYPE DEFAULT 'X'.
+   SELECTION-SCREEN COMMENT 3(15) COM2.
+
+   PARAMETERS: VEND RADIOBUTTON GROUP GR1.
+   SELECTION-SCREEN COMMENT 21(15) COM3.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN SKIP 1.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+   SELECTION-SCREEN COMMENT 1(14) COM4 FOR FIELD CUST_CD
+     MODIF ID CG1.
+   PARAMETERS: CUST_CD LIKE KNA1-KUNNR MODIF ID CG1.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+   SELECTION-SCREEN COMMENT 1(14) COM5 MODIF ID CG2
+     FOR FIELD VEND_CD.
+   PARAMETERS:  VEND_CD LIKE LFA1-LIFNR VALUE CHECK
+     MODIF ID CG2.
+  SELECTION-SCREEN END OF LINE.
+
+ SELECTION-SCREEN SKIP 1.
+
+SELECTION-SCREEN END OF BLOCK BL1.
+
+***********************************
+INITIALIZATION.
+COM1 = '----- Select Business Partner Type -----'(001).
+COM4 = 'Customer Code:'(004).
+COM5 = 'Vendor Code:'(005).
+COM2 = 'Customer'(002).
+COM3 = 'Vendor'(003).
+
+***********************************************
+***********************************************
+AT SELECTION-SCREEN OUTPUT.
+IF CUST = 'X'.
+ PARTNER_TP = 'C'.
+ELSE.
+ PARTNER_TP = 'V'.
+ENDIF.
+
+LOOP AT SCREEN .
+ IF SCREEN-GROUP1 <> 'CG1' AND SCREEN-GROUP1 <> 'CG2'.
+  CONTINUE.
+ ENDIF.
+
+ IF ( SCREEN-GROUP1 = 'CG1' AND PARTNER_TP = 'C' ) OR
+    ( SCREEN-GROUP1 = 'CG2' AND PARTNER_TP = 'V' ).
+
+  SCREEN-INPUT     = 1.
+  SCREEN-ACTIVE    = 1.
+  SCREEN-INVISIBLE = 0.
+
+ ELSEIF ( SCREEN-GROUP1 = 'CG1' AND PARTNER_TP <> 'C' ) OR
+        ( SCREEN-GROUP1 = 'CG2' AND PARTNER_TP <> 'V' ).
+
+  SCREEN-INPUT     = 0.
+  SCREEN-ACTIVE    = 0.
+  SCREEN-INVISIBLE = 1.
+ ENDIF.
+
+ MODIFY SCREEN.
+
+ENDLOOP.
+
+**************** main processing **************
+
+START-OF-SELECTION.
+
+CREATE OBJECT CUST_ADDR.
+
+CREATE OBJECT VEND_ADDR.
+
+IF CUST = 'X'.
+
+ BPCODE = CUST_CD.
+  IF_PARTNER_ADDR = CUST_ADDR. " UP/WIDE CASTING
+
+ELSE.
+
+ BPCODE = VEND_CD.
+ IF_PARTNER_ADDR = VEND_ADDR. " UP/WIDE CASTING
+ENDIF.
+********************
+
+CALL METHOD IF_PARTNER_ADDR->GET_ADDRESS
+  EXPORTING
+              BPCODE   = BPCODE
+  IMPORTING
+              PNAME    = NAME1
+              PSTREET  = STRAS
+              PCITY    = ORT01
+              PPIN     = PSTLZ
+              EXCEPTIONS INVALID_CODE = 4.
+
+IF SY-SUBRC <> 0.
+
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+         DISPLAY LIKE 'E'.
+
+ELSE.
+
+ WRITE /5: BPCODE USING NO EDIT MASK,
+           NAME1, STRAS, ORT01, PSTLZ.
+ENDIF.
+**********************************************

@@ -1,0 +1,52 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_06_CALL_SPELL_AMOUNT
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_06_CALL_SPELL_AMOUNT LINE-SIZE 170.
+
+*****************************************
+* CALLING Function Module SPELL_AMOUNT **
+*****************************************
+
+***************************************************
+* input figure to be converted - PARAMETERS etc. **
+* CALL function module SPELL_AMOUNT              **
+* check for error (SY-SUBRC <> 0)                **
+* if error, error message else                   **
+*                                                **
+* output SPELL-WORD & SPELL-DECWORD              **
+***************************************************
+
+DATA : RET_SPELL   TYPE SPELL.
+
+PARAMETERS: AMOUNT(16)  TYPE P DECIMALS 2 DEFAULT '87654321.90'.
+
+START-OF-SELECTION.
+
+CALL FUNCTION 'SPELL_AMOUNT' " CALL statement starts here
+
+ EXPORTING
+   AMOUNT          = AMOUNT   " amount figure
+   CURRENCY        = 'INR'    " currency code
+   FILLER          = ' '
+   LANGUAGE        = SY-LANGU " language code
+ IMPORTING
+   IN_WORDS        = RET_SPELL
+ EXCEPTIONS
+   NOT_FOUND       = 1
+   TOO_LARGE       = 2
+   OTHERS          = 3
+          .                    " CALL statement ends here
+
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ELSE.
+
+WRITE /5: RET_SPELL-WORD,
+          RET_SPELL-DECWORD.
+ENDIF.

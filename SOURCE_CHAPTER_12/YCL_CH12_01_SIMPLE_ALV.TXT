@@ -1,0 +1,170 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH12_01_SIMPLE_ALV
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH12_01_SIMPLE_ALV.
+
+********************************************
+* Customer Wise Sales Summary in ALV Grid **
+********************************************
+
+****************************************************************
+*screen painter tran. code SE51, create screen 100. in the    **
+*               layout editor, drag & drop the custom control.**
+*               stretch/size & position it. name it in the    **
+*               attributes dialogue box as CUST_CONTT.        **
+*                                                             **
+*               enter the field OK_CODE in the element list   **
+*                                                             **
+*               de-comment the module invoking statements     **
+*               in the flow logic. create PBO, PAI modules    **
+*                                                             **
+*menu painter   create a status STAT1 with one button.        **
+*               function code BACK                            **
+*                                                             **
+*               create title TITLE1                           **
+*                                                             **
+*DDIC           copy data element NETWR into YCL_CH12_NETWR   **
+*               modify this data element. assign it the       **
+*               domain DEC15_2 having DDIC type DEC           **
+*                                                             **
+*               create structure YCL_CH12_SALES_SUM_STRU with **
+*               fields KUNNR, NAME1, ORT01 & NETWR. to the    **
+*               NETWR field in structure, assign data element **
+*               YCL_CH12_NETWR                                **
+*                                                             **
+* ABAP program  declare reference variables for instances     **
+*               of CL_GUI_CUSTOMER_CONTAINER, CL_GUI_ALV_GRID **
+*               declare OK_CODE                               **
+*                                                             **
+*               after the generation of customer wise sales   **
+*               summary internal table, sort it on KUNNR      **
+*                                                             **
+*               code the statement CALL SCREEN 100 to load    **
+*               screen 100. this is the last statement in     **
+*               START-OF-SELECTION event.                     **
+*                                                             **
+*               in the PBO module:                            **
+*               SET PF-STATUS.., SET TITLE..                  **
+*                                                             **
+*               create instance of CL_GUI_CUSTOM_CONTAINER    **
+*               create instance of CL_GUI_ALV_GRID            **
+*               invoke method SET_TABLE_FOR_FIRST_DISPLAY for **
+*               instance of CL_GUI_ALV_GRID                   **
+*                                                             **
+*               in the PAI module:                            **
+*               check OK_CODE = 'BACK'. if so SET SCREEN 0    **
+*               LEAVE SCREEN                                  **
+*                                                             **
+****************************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS,
+
+      OK_CODE    TYPE SY-UCOMM,
+
+      CCONTR     TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+       " reference variable for instance of custom container
+
+      ALV_GRID   TYPE REF TO CL_GUI_ALV_GRID.
+       " reference variable for instance of ALV grid
+
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000.
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0.
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+CALL SCREEN 100. " screen 100 will be loaded
+
+**************************************************************
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+ SET PF-STATUS 'STAT1'.
+ SET TITLEBAR 'TITLE1' WITH CCODE BUTXT WAERS.
+ CREATE OBJECT CCONTR   " create instance of custom container
+   EXPORTING
+     CONTAINER_NAME              = 'CUST_CONTT' " name of custom control
+   EXCEPTIONS
+     CNTL_ERROR                  = 1
+     CNTL_SYSTEM_ERROR           = 2
+     CREATE_ERROR                = 3
+     LIFETIME_ERROR              = 4
+     LIFETIME_DYNPRO_DYNPRO_LINK = 5
+     others                      = 6
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ CREATE OBJECT ALV_GRID " create instance of ALV grid
+   EXPORTING
+     I_PARENT          = CCONTR " reference to instance of custom container
+   EXCEPTIONS
+     ERROR_CNTL_CREATE = 1
+     ERROR_CNTL_INIT   = 2
+     ERROR_CNTL_LINK   = 3
+     ERROR_DP_CREATE   = 4
+     others            = 5
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+***** populate & diaplay instance of ALV grid  *****
+
+ CALL METHOD ALV_GRID->SET_TABLE_FOR_FIRST_DISPLAY
+   EXPORTING
+     I_STRUCTURE_NAME              = 'YCL_CH12_SALES_SUM_STRU'
+   CHANGING
+     IT_OUTTAB                     = SALES_TAB
+   EXCEPTIONS
+     INVALID_PARAMETER_COMBINATION = 1
+     PROGRAM_ERROR                 = 2
+     TOO_MANY_LINES                = 3
+     others                        = 4
+         .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+
+IF OK_CODE = 'BACK'.
+ SET SCREEN 0. " these two statements return
+ LEAVE SCREEN. " control to PARAMETERS prompt
+ENDIF.
+
+ENDMODULE.                 " USER_COMMAND_0100  INPUT

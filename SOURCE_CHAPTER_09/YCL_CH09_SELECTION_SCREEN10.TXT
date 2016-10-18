@@ -1,0 +1,219 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN10
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  YCL_CH09_SELECTION_SCREEN10 NO STANDARD PAGE HEADING
+          LINE-SIZE 120 LINE-COUNT 60.
+
+******************************************************
+* Use F.M. RS_VARIANT_VALUES_TECH_DATA To Retrieve  **
+* Variant Values Into Internal Data Object          **
+* Use Internal Data Object In SELECT Statement To   **
+* Filter Data.                                      **
+* Program Submit-able IN BACKGROUND                 **
+******************************************************
+
+*********************************************************
+* I. declare selection table like data object without  **
+*    using selection screen statement SELECT-OPTIONS   **
+*                                                      **
+* you can declare an internal table data object like   **
+* the selection table - internal table having the      **
+* four fields: SIGN, OPTION, LOW, HIGH using the       **
+* DATA statement with the key phrase RANGE OF..        **
+*                                                      **
+* DATA: CUST_CD TYPE RANGE OF KNA1-KUNNR.              **
+*                                                      **
+*                                                      **
+* II. retrieve variant values into internal table      **
+*                                                      **
+* the variants are stored in the DDIC structure form   **
+* RSPARAMS. the fields with TYPES, lengths of DDIC     **
+* structure RSPARAMS:                                  **
+*                                                      **
+* SELNAME(8) TYPE C selection screen variable name     **
+* KIND(1)    TYPE C 'S' for SELECT-OPTIONS variable    **
+*                   'P' for PARAMETERS variable        **
+* SIGN(1)    TYPE C                                    **
+* OPTION(2)  TYPE C                                    **
+* LOW(45)    TYPE C                                    **
+* HIGH(45)   TYPE C                                    **
+*                                                      **
+* this is the way the variant data is stored. (source) **
+* it is retrieved into the program declared internal   **
+* table VAR_VALUES using the function module:          **
+* RS_VARIANT_VALUES_TECH_DATA. this function module    **
+* takes two import parameters i.e. program name and    **
+* variant name. it returns the variant values in the   **
+* internal table of structure RSPARAMS.                **
+*                                                      **
+* your import parameters to the function module:       **
+* program name: YCL_CH08_SELECTION_SCREEN08            **
+* variant name: VARIANT_I                              **
+*                                                      **
+* the variant values will be retrieved for two         **
+* selection screen variables defined/declared in       **
+* program YCL_CH09_SELECTION_SCREEN08:                 **
+* (1) CCODE:    thru PARAMETERS for company code       **
+* (2) CUST_CD1: thru SELECT-OPTIONS for customer code  **
+*                                                      **
+* III. transfer variant values from internal table     **
+*      VAR_VALUES into selection table CUST_CD declared**
+*      with TYPE RANGE OF.. etc. and CCODE.            **
+*                                                      **
+* setup LOOP AT VAR_VALUES.                            **
+*                                                      **
+*  check VAR_VALUES-SELNAME = 'CUST_CD1' and           **
+*  VAR_VALUES-KIND = 'S'                               **
+*                                                      **
+*   then use MOVE-CORRESPONDING to move data from      **
+*   structure VAR_VALUES to structure CUST_CD.         **
+*   variant values are not saved/stored with leading   **
+*   zeroes. use conversion exit routine                **
+*   'CONVERSION_EXIT_ALPHA_INPUT' to insert leading    **
+*   zeroes to CUST_CD-LOW, CUST_CD-HIGH fields.        **
+*   APPEND to selection table like internal table      **
+*   CUST_CD.                                           **
+*                                                      **
+*  check if VAR_VALUES-SELNAME = 'CCODE' and           **
+*   KIND = 'P' then CCODE = VAR_VALUES-LOW.            **
+*                                                      **
+* ENDLOOP.                                             **
+*                                                      **
+*                                                      **
+* IV. use the variables CCODE and CUST_CD in the       **
+*     SELECT statement to filter data as per variant   **
+*     values                                           **
+*                                                      **
+* rest of program same as YCL_CH09_SELECTION_SCREEN08  **
+*********************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+      TOTAL      TYPE VBRK-NETWR,
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS,
+      BUTXTS     TYPE STRING,
+      CCODE      TYPE VBRK-BUKRS,
+
+      CUST_CD    TYPE RANGE OF KNA1-KUNNR WITH HEADER LINE,
+                    "create internal table of stru SIGN, OPTION, LOW, HIGH
+
+      VAR_VALUES TYPE STANDARD TABLE OF RSPARAMS WITH HEADER LINE.
+                    " function module formal parameter VARIANT_VALUES
+                    " is TYPE RSPARAMS
+****************************************************************************
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS, 102 TEXT-003,
+         107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+****************************************************************************
+START-OF-SELECTION.
+
+CALL FUNCTION 'RS_VARIANT_VALUES_TECH_DATA'
+  EXPORTING
+    REPORT                     = 'YCL_CH09_SELECTION_SCREEN08'
+    VARIANT                    = 'VARIANT_I'
+*   SEL_TEXT                   = ' '
+*   MOVE_OR_WRITE              = 'W'
+*   SORTED                     = ' '
+*   EXECUTE_DIRECT             =
+* IMPORTING
+*   TECHN_DATA                 =
+  TABLES
+    VARIANT_VALUES             = VAR_VALUES[]
+*   VARIANT_TEXT               =
+ EXCEPTIONS
+   VARIANT_NON_EXISTENT       = 1
+   VARIANT_OBSOLETE           = 2
+   OTHERS                     = 3
+          .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO WITH SY-MSGV1 SY-MSGV2
+  SY-MSGV3 SY-MSGV4.
+ EXIT.
+ENDIF.
+*************************
+LOOP AT VAR_VALUES.
+ IF VAR_VALUES-SELNAME = 'CUST_CD1' AND VAR_VALUES-KIND = 'S'.
+                                   " = 'S' - SELECT-OPTIONS variable
+
+   MOVE-CORRESPONDING VAR_VALUES TO CUST_CD. " MOVE to selection table stru
+
+   CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT' " insert leading zeroes into
+                                               " CUST_CD-LOW
+     EXPORTING
+       INPUT         = CUST_CD-LOW
+     IMPORTING
+       OUTPUT         = CUST_CD-LOW
+           .
+
+   CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT' " insert leading zeroes into
+                                               " CUST_CD-HIGH
+     EXPORTING
+       INPUT         = CUST_CD-HIGH
+     IMPORTING
+       OUTPUT         = CUST_CD-HIGH
+         .
+
+   APPEND CUST_CD.
+
+ ELSEIF VAR_VALUES-SELNAME = 'CCODE' AND VAR_VALUES-KIND = 'P'.
+                                      " = 'P' - PARAMETERS variable
+
+   CCODE = VAR_VALUES-LOW.
+ ENDIF.
+
+ENDLOOP.
+************************************
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU
+
+  WHERE BUKRS = CCODE
+        AND KUNNR IN CUST_CD . " IN operator with selection table
+                               " type variable
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+LOOP AT CUST_CD. " output selection table
+
+ WRITE:/5(2) SY-TABIX, CUST_CD-SIGN, CUST_CD-OPTION, CUST_CD-LOW,
+  CUST_CD-HIGH.
+
+ENDLOOP.
+
+SKIP 4. " a gap of 4 lines between CUST_CD data &
+        " customer data.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+
+ WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+  SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+ TOTAL = TOTAL + SALES_STRU-NETWR.
+
+ENDLOOP.
+
+SKIP 1.
+WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.

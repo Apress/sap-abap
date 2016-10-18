@@ -1,0 +1,163 @@
+*&---------------------------------------------------------------------*
+*& Report YCL_CH10_ILISTS06
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_ILISTS06 NO STANDARD PAGE HEADING
+        LINE-COUNT 60.
+
+************************************************
+* INTERACTIVE LISTS - SET USER-COMMAND,       **
+*                     Lists In Dialogue Boxes **
+************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+
+      BEGIN OF BILLS_STRU,
+       VBELN    TYPE VBRK-VBELN,
+       FKDAT    TYPE VBRK-FKDAT,
+       WAERK    TYPE VBRK-WAERK,
+       KURRF    TYPE VBRK-KURRF,
+       NETWR    TYPE VBRK-NETWR,
+      END OF BILLS_STRU,
+      BILLS_TAB LIKE STANDARD TABLE OF BILLS_STRU,
+
+      KUNNR    TYPE KNA1-KUNNR,
+      NAME1    TYPE KNA1-NAME1,
+      TOTAL    TYPE VBRK-NETWR,
+      TOTAL1   TYPE VBRK-NETWR,
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING.
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS VALUE CHECK
+            DEFAULT 3000.
+
+**********************************************
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS)
+        WHERE BUKRS = CCODE.
+
+BUTXTS = BUTXT.
+
+SET USER-COMMAND 'ABCD'. " will trigger AT USER-COMMAND
+WRITE: 'DUMMY'. " dummy primary list. will not appear
+                " because of SET USER-COMMAND
+
+*********************************************************
+*********************************************************
+AT USER-COMMAND.
+
+IF SY-UCOMM = 'EXIT'. " EXIT button on secondary i
+ LEAVE SCREEN.
+ENDIF.
+
+ CASE SY-LSIND.
+
+ WHEN 1.
+
+  TOTAL = 0.
+
+  SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+    CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+   SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+   SALES_STRU-KURRF = 0. "to prevent overflow
+   COLLECT SALES_STRU INTO SALES_TAB.
+  ENDSELECT.
+
+  DESCRIBE TABLE SALES_TAB.
+
+  IF SY-TFILL > 0.
+
+   SORT SALES_TAB BY KUNNR.
+
+   WINDOW STARTING AT 1 1 ENDING AT 73 13. " WINDOW statement start column
+                                          " start row end column end row
+
+   SET PF-STATUS 'STAT1'.
+   LOOP AT SALES_TAB INTO SALES_STRU.
+    WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+     SALES_STRU-NAME1, (17) SALES_STRU-NETWR.
+    TOTAL = TOTAL + SALES_STRU-NETWR.
+   ENDLOOP.
+
+   SKIP 1.
+   WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.
+  ELSE.
+   MESSAGE S021(YCL_CH07_MCLASS01) WITH " no data for the comapny code
+    'Customer Summary' DISPLAY LIKE 'W'.
+   LEAVE SCREEN.
+  ENDIF.
+
+ WHEN 2.
+
+  TOTAL1 = 0.
+  KUNNR = SY-LISEL+9(10).  " extract customer code
+  NAME1 = SY-LISEL+20(35). " extract customer name
+
+  SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK
+    INTO TABLE BILLS_TAB
+    WHERE KUNAG = KUNNR AND BUKRS = CCODE.
+
+  DESCRIBE TABLE BILLS_TAB.
+
+  IF SY-TFILL > 0.
+
+   WINDOW STARTING AT 78 1 ENDING AT 120 13.
+
+   SET PF-STATUS ' '.
+
+   LOOP AT BILLS_TAB INTO BILLS_STRU.
+    BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+    TOTAL1 = TOTAL1 + BILLS_STRU-NETWR.
+    WRITE:/1(4) SY-TABIX, BILLS_STRU-VBELN, BILLS_STRU-FKDAT,
+     (15) BILLS_STRU-NETWR.
+   ENDLOOP.
+
+   SKIP 1.
+   WRITE:/28(15) TOTAL1.
+
+  ELSE.
+    MESSAGE W021(YCL_CH07_MCLASS01) WITH " no data for the comapny code
+    'Bills Of A Customer' DISPLAY LIKE 'I'.
+
+   SY-LSIND = 1.
+
+  ENDIF.
+ ENDCASE.
+
+**************************************
+**************************************
+TOP-OF-PAGE DURING LINE-SELECTION.
+
+CASE SY-LSIND.
+
+ WHEN 1.
+
+  WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS.
+  WRITE:/40 TEXT-002, WAERS, 66 TEXT-003, 71(3) SY-PAGNO..
+  SKIP 1.
+  WRITE:/5(68) SY-ULINE.
+  WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 56(17)
+           TEXT-008 RIGHT-JUSTIFIED.
+  WRITE:/5 TEXT-009, 13 TEXT-010.
+  WRITE:/5(68) SY-ULINE.
+
+ WHEN 2.
+
+  WRITE:/1 TEXT-011, 35 TEXT-003, 40(3) SY-PAGNO.
+  WRITE:/1 KUNNR USING NO EDIT MASK NO-GAP, '/' NO-GAP, NAME1.
+  WRITE:/1(42) SY-ULINE.
+  WRITE:/1 TEXT-004, 06 TEXT-012, 17 TEXT-013,  36 TEXT-008.
+  WRITE:/2 TEXT-009 .
+  WRITE:/1(42) SY-ULINE.
+
+ENDCASE.
+*******************************************************************

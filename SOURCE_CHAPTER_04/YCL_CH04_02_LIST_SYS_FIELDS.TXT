@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_02_LIST_SYS_FIELDS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT  YCL_CH04_02_LIST_SYS_FIELDS.
+
+**************************
+* Output System Fields  **
+**************************
+
+WRITE:/5 'SY-ABCDE', SY-ABCDE, " / start output on new line
+      /5 'SY-DATUM', SY-DATUM, " 5 start the output from 5th column
+      /5 'SY-DBSYS', SY-DBSYS, " : & , are for chaining i.e. avoiding
+                               " repetition of the key word WRITE
+      /5 'SY-HOST ', SY-HOST,  " text literals enclosed in single quote
+      /5 'SY-LANGU', SY-LANGU,
+      /5 'SY-MANDT', SY-MANDT,
+      /5 'SY-OPSYS', SY-OPSYS,
+      /5 'SY-REPID', SY-REPID,
+      /5 'SY-SAPRL', SY-SAPRL,
+      /5 'SY-SYSID', SY-SYSID,
+      /5 'SY-TCODE', SY-TCODE,
+      /5 'SY-UNAME', SY-UNAME,
+      /5 'SY-UZEIT', SY-UZEIT.

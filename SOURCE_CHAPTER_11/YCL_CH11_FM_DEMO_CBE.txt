@@ -1,0 +1,29 @@
+FUNCTION YCL_CH11_FM_DEMO_CBE.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  EXPORTING
+*"     VALUE(RETURN_STR) TYPE  STRING
+*"  TABLES
+*"      STR_TAB TYPE  STRING_TABLE
+*"  RAISING
+*"      YCX_YCL_CH11_EXCEPTIONS1
+*"----------------------------------------------------------------------
+
+DESCRIBE TABLE STR_TAB.
+
+IF SY-TFILL = 0.
+ RAISE EXCEPTION TYPE YCX_YCL_CH11_EXCEPTIONS1
+  EXPORTING
+  TEXTID = YCX_YCL_CH11_EXCEPTIONS1=>NO_DATA.
+ENDIF.
+
+LOOP AT STR_TAB.
+ IF SY-TABIX = 1.
+  RETURN_STR = STR_TAB.
+ ELSE.
+  CONCATENATE RETURN_STR STR_TAB INTO RETURN_STR
+   SEPARATED BY ' '.
+ ENDIF.
+ENDLOOP.
+
+ENDFUNCTION.

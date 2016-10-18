@@ -1,0 +1,437 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_05_USE_GCLASS_FES
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_05_USE_GCLASS_FES NO STANDARD PAGE HEADING.
+
+***********************************************************
+* Use Methods FILE_OPEN_DIALOG, FILE_EXIST, GUI_DOWNLOAD **
+* of Class CL_GUI_FRONTEND_SERVICES to Download First    **
+* Secondary List in HTML Format to a File on the         **
+* Presentation Server/Front-end                          **
+***********************************************************
+
+DATA: BEGIN OF FIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME," field name
+       POSITION  TYPE DD03L-POSITION, " field position in stru 1, 2..
+                                      " line no. & field position map
+                                      " one-to-one. helps in accessing
+                                      " a field with line no.
+       INTTYPE   TYPE DD03L-INTTYPE,  " ABAP TYPE: C,D,F,I,N,P etc.
+       DATATYPE  TYPE DD03L-DATATYPE, " DDIC TYPE: CHAR, NUMC etc.
+       KEYFLAG   TYPE DD03L-KEYFLAG,  " flag for primary key field
+       CBOX(1)   TYPE C,              " field enabled/disabled check box
+       OBLEN     TYPE I,              " width of output
+      END OF FIELDS_STRU,
+
+      BEGIN OF SFIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF SFIELDS_STRU,
+
+      BEGIN OF ORDERBY_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF ORDERBY_STRU,
+
+      BEGIN OF OHEAD_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+       OLEN      TYPE I, " width of output
+       OTEXT     TYPE STRING,
+       INTTYPE   TYPE DD03L-INTTYPE,
+      END OF OHEAD_STRU,
+
+      FIELDS_TAB  LIKE STANDARD TABLE OF FIELDS_STRU, " all fields of
+                                                      " selected table
+
+      SFIELDS_TAB LIKE STANDARD TABLE OF SFIELDS_STRU," selected fields of
+                                                      " selected table. used
+                                                      " in SELECT statement
+
+      ORDERBY_TAB LIKE STANDARD TABLE OF ORDERBY_STRU,  " primary key fields
+                                                        " (in sort)
+      CONDS_TAB   TYPE STRING OCCURS 0 WITH HEADER LINE, " condition for
+                                                         " text tables
+      OHEAD_TAB   LIKE STANDARD TABLE OF OHEAD_STRU,     " texts for
+                                                         " column headings
+      CTR        TYPE I, " outputted field number
+      LINSZ      TYPE I, " LINE-SIZE
+      LCNT       TYPE I, " temporary
+      PAGE(3)    TYPE C,
+      CK_BOX(1)  TYPE C, " READ..FIELDS_STRU-CBOX INTO..
+      TABCLASS   TYPE DD02L-TABCLASS, " destination field from table DD02L
+      DSTRU      TYPE REF TO DATA,    " ref. variable of structure object
+
+* addition in this program  start *
+***********************************
+      STR_TAB     TYPE FILETABLE WITH HEADER LINE, " return selected file
+      HTML_TAB    TYPE STANDARD TABLE OF W3HTML, "HTML formatted list
+      CNT         TYPE I, " no of files selected in file open dialog
+      ANS(1)      TYPE C, " return value of popup dialogue box
+      CANCEL(1)   TYPE C. " cancel download
+
+* addition in this program end *
+********************************
+
+FIELD-SYMBOLS: <DSTRU>, " field symbol to access structure
+               <FLD>.   " field symbol to access field
+
+***********SELECTION-SCREEN***************************
+PARAMETERS: TAB_NAME  TYPE DD03L-TABNAME VALUE CHECK.
+
+AT SELECTION-SCREEN.
+
+  SELECT SINGLE TABCLASS FROM DD02L INTO TABCLASS WHERE TABNAME = TAB_NAME.
+
+  IF TABCLASS <> 'TRANSP' AND TABCLASS <> 'CLUSTER' AND
+    TABCLASS <> 'POOL' AND TABCLASS <> 'VIEW'.
+   MESSAGE E022(YCL_CH07_MCLASS01) WITH TAB_NAME.
+  ENDIF.
+***********************************************************
+***********************************************************
+
+START-OF-SELECTION.
+
+SELECT FIELDNAME POSITION INTTYPE DATATYPE KEYFLAG FROM DD03L
+ INTO CORRESPONDING FIELDS OF TABLE FIELDS_TAB
+ WHERE TABNAME = TAB_NAME AND FIELDNAME NOT LIKE '.%' AND
+  FIELDNAME NOT LIKE '/%'.
+
+SORT FIELDS_TAB BY POSITION.
+
+SET PF-STATUS 'STAT1'.
+SET TITLEBAR 'TITLE01' WITH TAB_NAME.
+
+*********primary list - list of fields **********************
+
+LOOP AT FIELDS_TAB INTO FIELDS_STRU.
+ WRITE:/5 FIELDS_STRU-CBOX AS CHECKBOX, FIELDS_STRU-FIELDNAME.
+ENDLOOP.
+
+**************************
+* AT USER-COMMAND event **
+**************************
+
+AT USER-COMMAND.
+
+CASE SY-UCOMM.
+
+ WHEN 'EXIT'.
+ LEAVE SCREEN.
+
+ WHEN 'BACK'.
+  SY-LSIND = SY-LSIND - 2.
+
+*****************select all**************
+ WHEN 'SALL'.
+
+ LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+  MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM 'X'
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+****************de-select all*************
+ WHEN 'DSALL'.
+
+  LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+   MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM ' '
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+********************output***************
+ WHEN 'DDATA'.
+ REFRESH: SFIELDS_TAB, ORDERBY_TAB, OHEAD_TAB, CONDS_TAB.
+                " initialize internal tables
+ LINSZ = 0.
+ CREATE DATA DSTRU TYPE (TAB_NAME).
+ ASSIGN DSTRU->* TO <DSTRU>.
+
+******determine selected fields, build internal tables******
+ DO.
+  READ LINE SY-INDEX FIELD VALUE FIELDS_STRU-CBOX INTO CK_BOX.
+  IF SY-SUBRC <> 0. " no more lines in the list
+   EXIT.
+  ENDIF.
+  IF CK_BOX = 'X'.
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   SFIELDS_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+   APPEND SFIELDS_STRU TO SFIELDS_TAB.
+
+
+   ASSIGN COMPONENT SY-INDEX OF STRUCTURE <DSTRU> TO <FLD>.
+
+   PERFORM FILL_OHEAD_TAB TABLES OHEAD_TAB USING TAB_NAME
+     FIELDS_STRU <FLD>.
+
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+   IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ELSE.
+
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+  IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ENDIF.
+ ENDDO.
+
+
+ DESCRIBE TABLE SFIELDS_TAB.
+
+ IF SY-TFILL = 0. " no fields selected
+  MESSAGE S023(YCL_CH07_MCLASS01) WITH
+  TAB_NAME DISPLAY LIKE 'W'.
+  SY-LSIND = SY-LSIND - 1.
+  EXIT.
+ ENDIF.
+
+ LINSZ = LINSZ + 3.
+
+ IF LINSZ > 1023. " SY-LINSZ CANNOT EXCEED 1023.
+  MESSAGE S024(YCL_CH07_MCLASS01) WITH
+  LINSZ DISPLAY LIKE 'W'.
+  SY-LSIND = SY-LSIND - 1.
+  EXIT.
+
+ ENDIF.
+
+ CREATE DATA DSTRU TYPE (TAB_NAME).
+ ASSIGN DSTRU->* TO <DSTRU>.
+ SET PF-STATUS 'STAT2'.
+
+ NEW-PAGE  LINE-SIZE LINSZ LINE-COUNT 60. " LINSZ as per total width
+                                          " of all outputted columns
+
+ SET TITLEBAR 'TITLE02' WITH TAB_NAME.
+
+**************retrieve data & output***********************
+
+ SELECT (SFIELDS_TAB) FROM (TAB_NAME) INTO CORRESPONDING FIELDS OF
+  <DSTRU> WHERE (CONDS_TAB) ORDER BY (ORDERBY_TAB).
+  CTR = 0.
+  DO.
+   ASSIGN COMPONENT SY-INDEX OF STRUCTURE <DSTRU> TO <FLD>.
+   IF SY-SUBRC <> 0.
+    EXIT.
+   ENDIF.
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   IF FIELDS_STRU-CBOX <> 'X'.
+    CONTINUE.
+   ENDIF.
+   CTR = CTR + 1.
+   IF CTR = 1.
+    WRITE AT :/5(FIELDS_STRU-OBLEN) <FLD>.
+   ELSE.
+    WRITE AT :(FIELDS_STRU-OBLEN) <FLD>.
+   ENDIF.
+  ENDDO.
+
+ ENDSELECT.
+
+* addition in this program  start *
+***********************************
+
+*********download HTML**********
+ WHEN 'DOWNH'.
+
+   SY-LSIND = SY-LSIND - 1.
+
+   SELECTION-SCREEN BEGIN OF SCREEN 2000.
+   PARAMETERS FILE TYPE STRING.
+   SELECTION-SCREEN END OF SCREEN 2000.
+   CALL SELECTION-SCREEN 2000  STARTING AT 3 2 ENDING AT 90 7.
+
+*********************************************************
+  IF CANCEL = 'C'. " cancel download
+   CANCEL = ' '.
+
+  ELSE.
+   ANS = ' '.
+   IF CL_GUI_FRONTEND_SERVICES=>FILE_EXIST( FILE = FILE ) = 'X'.
+
+    CALL FUNCTION 'POPUP_TO_CONFIRM'
+      EXPORTING
+        TEXT_QUESTION               = 'Confirm Overwriting'(001)
+        TEXT_BUTTON_1               = 'Yes'(002)
+        TEXT_BUTTON_2               = 'No'(003)
+        DEFAULT_BUTTON              = '2'
+        DISPLAY_CANCEL_BUTTON       = ' '
+        START_COLUMN                = 25
+        START_ROW                   = 6
+      IMPORTING
+        ANSWER                      = ANS
+           .
+
+   ENDIF.
+
+*********************************************************
+   IF ANS <> '2'.
+
+    CALL FUNCTION 'WWW_LIST_TO_HTML'
+     EXPORTING
+       LIST_INDEX       = 1
+     TABLES
+       HTML             = HTML_TAB[].
+
+    CALL METHOD CL_GUI_FRONTEND_SERVICES=>GUI_DOWNLOAD
+      EXPORTING
+        FILENAME                   = FILE "'D:\TMP\EEE.HTM'
+        FILETYPE                   = 'BIN'
+        WRITE_LF                  = 'X'
+*       CONFIRM_OVERWRITE         = 'X'
+      CHANGING
+        DATA_TAB                   = HTML_TAB[]
+        .
+    IF SY-SUBRC <> 0.
+     MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+    ENDIF.
+   ELSE.
+    MESSAGE S038(YCL_CH07_MCLASS01)
+     WITH FILE. " Overwriting Existing File:&1 Cancelled
+
+   ENDIF.
+ ENDIF.
+ENDCASE.
+
+*******************************************************
+AT SELECTION-SCREEN ON EXIT-COMMAND.
+
+CANCEL = 'C'. " for cancel download
+*******************************************************
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR FILE.
+
+
+CALL METHOD CL_GUI_FRONTEND_SERVICES=>FILE_OPEN_DIALOG
+  EXPORTING
+*    WINDOW_TITLE            =
+     MULTISELECTION          = ' '
+  CHANGING
+    FILE_TABLE              = STR_TAB[]
+    RC                      = CNT
+  EXCEPTIONS
+    FILE_OPEN_DIALOG_FAILED = 1
+    CNTL_ERROR              = 2
+    ERROR_NO_GUI            = 3
+    NOT_SUPPORTED_BY_GUI    = 4
+    others                  = 5
+        .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ELSE.
+
+ READ TABLE STR_TAB INDEX 1.
+ IF STR_TAB IS NOT INITIAL.
+  FILE = STR_TAB.
+ ENDIF.
+
+ENDIF.
+
+* addition in this program end *
+********************************
+
+**********************************************************
+* heading using event TOP-OF-PAGE DURING LINE-SELECTION **
+**********************************************************
+TOP-OF-PAGE DURING LINE-SELECTION.
+
+ LCNT = LINSZ - 2.
+ PAGE = SY-PAGNO.
+ WRITE AT /LCNT PAGE RIGHT-JUSTIFIED.
+
+ LCNT = LINSZ - 4.
+
+ WRITE AT /5(LCNT) SY-ULINE.
+
+ LOOP AT OHEAD_TAB INTO OHEAD_STRU.
+
+  IF SY-TABIX = 1.
+   IF OHEAD_STRU-INTTYPE = 'F' OR OHEAD_STRU-INTTYPE = 'I'
+    OR OHEAD_STRU-INTTYPE = 'P'.
+    WRITE AT /5(OHEAD_STRU-OLEN) OHEAD_STRU-OTEXT RIGHT-JUSTIFIED.
+   ELSE.
+    WRITE AT /5(OHEAD_STRU-OLEN) OHEAD_STRU-OTEXT.
+   ENDIF.
+  ELSE.
+   IF OHEAD_STRU-INTTYPE = 'F' OR OHEAD_STRU-INTTYPE = 'I'
+    OR OHEAD_STRU-INTTYPE = 'P'.
+    WRITE AT (OHEAD_STRU-OLEN) OHEAD_STRU-OTEXT RIGHT-JUSTIFIED.
+   ELSE.
+    WRITE AT (OHEAD_STRU-OLEN) OHEAD_STRU-OTEXT.
+   ENDIF.
+  ENDIF.
+ ENDLOOP.
+
+ WRITE AT /5(LCNT) SY-ULINE.
+ SKIP 1.
+
+****************************************
+* Get Column Heading Texts,           **
+* build column heading internal table **
+****************************************
+
+FORM  FILL_OHEAD_TAB
+       TABLES
+        OTAB LIKE OHEAD_TAB
+
+       USING
+        VALUE(TNAME)
+        FSTRU LIKE FIELDS_STRU VALUE(FLD) .
+
+ DATA: LNGT     TYPE I,
+       OSTRU    LIKE LINE OF OTAB.
+
+ CALL FUNCTION 'MG_FIELDNAME_TEXT'
+  EXPORTING
+    TABNAME         = TNAME
+    FIELDNAME       = FSTRU-FIELDNAME
+ IMPORTING
+   REPTEXT         = OSTRU-OTEXT
+          .
+
+ OSTRU-FIELDNAME = FSTRU-FIELDNAME.
+ OSTRU-INTTYPE   = FSTRU-INTTYPE.
+
+ DESCRIBE FIELD FLD OUTPUT-LENGTH OSTRU-OLEN.
+
+ LNGT = STRLEN( OSTRU-OTEXT ).
+
+ IF LNGT > OSTRU-OLEN.
+  OSTRU-OLEN = LNGT.
+ ENDIF.
+
+ FSTRU-OBLEN = OSTRU-OLEN.
+ APPEND OSTRU TO OTAB.
+ LINSZ = LINSZ + OSTRU-OLEN + 1.
+
+ENDFORM.
+***********************************

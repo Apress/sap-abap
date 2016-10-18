@@ -1,0 +1,107 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_DATA_DEC_REFS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+
+REPORT YCL_CH06_DATA_DEC_REFS.
+
+***********************************************************************************
+* Summary of Data Declaration by Reference to Other Data Objects, Types:         **
+* You have been declaring data objects by referring to other objects, TYPES etc. **
+* A good time to draw up a summary of the possible references:                   **
+***********************************************************************************
+
+* I.   Referring to DDIC Table Structure/View(All Types of Views)/DDIC Structure
+*      Definition (Key Word TYPE/LIKE)
+
+* Example:
+
+TABLES: TCURT, YCL_CH05_CM_SALE, YCL_CH05_CUST_STRU.
+
+DATA: KNA1      TYPE KNA1,
+      CUST_STRU LIKE KNA1.
+
+* II.  Referring to DDIC Table Structure Field/View Field (All Types of Views)/DDIC
+*      Structure Definition Field (Key Word TYPE/LIKE)
+
+* Example:
+
+DATA: NAME1 TYPE KNA1-NAME1,
+      CITY  LIKE YCL_CH06_CUST_STRU-ORT01,
+      VBELN TYPE YCL_CH06_CM_SALE-VBELN.
+
+* III. Referring to DDIC Type Group Definitions (Elementary/Structure/Internal Table)
+*    (Key Word TYPE)
+
+* Example:
+
+TYPE-POOLS YCLG1.
+
+DATA: CONTACT_MODES_SRCE TYPE YCLG1_CONTACT_MODES_TYPE,
+      CONTACT_MODES_DEST TYPE YCLG1_CONTACT_MODES_TYPE.
+
+* IV.  Referring to DDIC Table Type (Internal Table)
+*       (Key Word TYPE)
+
+* Example:
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU TYPE LINE OF YCL_CH06_SALES_SUM_TAB. "no LIKE
+
+* V.   Referring to DDIC Data Element
+*      (Key Word TYPE)
+
+* Example:
+
+DATA: NAME2  TYPE NAME1_GP,
+      ORT01  TYPE ORT01_GP.
+
+* VI.  Referring to System Fields
+*      (Key Word TYPE/LIKE)
+
+* Example:
+
+DATA: REC_COUNT  TYPE SY-TABIX,
+      TODAY      LIKE SY-DATUM.
+
+* VII. Referring to TYPES in ABAP Program
+*      (Key Word TYPE)
+
+* Example:
+
+TYPES: BEGIN OF SALES_TYPE,
+        KUNNR TYPE KNA1-KUNNR,
+        NAME1 TYPE KNA1-NAME1,
+        VBELN TYPE VBRK-VBELN,
+        NETWR TYPE VBRK-NETWR,
+	KURRF TYPE VBRK-KURRF,
+       END OF SALES_TYPE.
+
+DATA: SALES_STRU1 TYPE SALES_TYPE,
+      SALES_TAB1  TYPE SORTED TABLE OF SALES_TYPE WITH NON-UNIQUE
+        KEY KUNNR,
+
+      PREV_KUNNR TYPE SALES_TYPE-KUNNR.
+
+* VIII. Referring to Local Data Objects in ABAP Program
+*       (Key Word LIKE)
+
+* Example:
+
+DATA:  STRNG1(50) TYPE C,
+       STRNG2     LIKE STRNG1, "REFERENCE TO LOCAL DATA OBJECT
+
+	   BEGIN OF SALES_STRU3,
+	    KUNNR TYPE KNA1-KUNNR,
+            NAME1 TYPE KNA1-NAME1,
+	    VBELN TYPE VBRK-VBELN,
+	    NETWR TYPE VBRK-NETWR,
+	    KURRF TYPE VBRK-KURRF,
+	   END OF SALES_STRU3,
+
+       SALES_TAB2 LIKE SORTED TABLE OF SALES_STRU
+        WITH NON-UNIQUE KEY KUNNR. "REFERENCE TO LOCAL DATA OBJECT

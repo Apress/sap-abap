@@ -1,0 +1,120 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_01_BEAD_STRINGS_LCLAS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_01_BEAD_STRINGS_LCLAS.
+
+**************************************
+* Local Class With One Method:      **
+* Concatenate rows Of An Array      **
+**************************************
+
+CLASS OWN_LOCAL_CLASS DEFINITION DEFERRED.
+                          " class not defined yet
+
+DATA:  CL_REF      TYPE REF TO OWN_LOCAL_CLASS,
+       RESULT      TYPE STRING,
+       STRING_TABL TYPE STRING_TABLE WITH HEADER LINE.
+                    " DDIC TABLE TYPE (array of TYPE STRING)
+
+**************** class definition *************************
+CLASS OWN_LOCAL_CLASS DEFINITION.
+
+**************************************************
+* class contains one method: BEAD_STRINGS       **
+*                                               **
+* the method takes two import parameters:       **
+* (1) an array of DDIC TYPE STRING_TABLE whose  **
+*     line is TYPE STRING                       **
+* (2) separator character between the words of  **
+*     concatenated string. DEFAULT is ' '       **
+*                                               **
+* concatenates all the rows of the array &      **
+* returns a single string of TYPE STRING        **
+*                                               **
+* the method has one exception. checks for no   **
+* data in the array STR_TAB - NO_DATA           **
+*                                               **
+* this is a functional method. can be used in   **
+* expressions though not in WRITE statement.    **
+* the WRITE statement does not support functions**
+* in its usage                                  **
+**************************************************
+
+ PUBLIC SECTION.
+
+ METHODS BEAD_STRINGS IMPORTING
+                       VALUE(STR_TAB)   TYPE STRING_TABLE
+                       VALUE(SEPARATOR) TYPE C DEFAULT ' '
+
+                      RETURNING
+                       VALUE(STRNG)     TYPE STRING
+
+                      EXCEPTIONS NO_DATA.
+PRIVATE SECTION.
+ DATA: STR            TYPE STRING.
+
+ENDCLASS.
+
+
+**************** class implementation *********************
+
+CLASS OWN_LOCAL_CLASS IMPLEMENTATION.
+
+METHOD BEAD_STRINGS.
+
+ DESCRIBE TABLE STR_TAB..
+
+ IF SY-TFILL = 0.
+  MESSAGE S035(YCL_CH07_MCLASS01) RAISING
+   NO_DATA.
+ ENDIF.
+
+
+ LOOP AT STR_TAB INTO STR.
+   IF SY-TABIX > 1.
+     CONCATENATE STRNG STR INTO STRNG SEPARATED
+      BY SEPARATOR.
+   ELSE.
+     STRNG = STR.
+   ENDIF.
+ ENDLOOP.
+
+ENDMETHOD.
+
+ENDCLASS.
+*****************************************************
+
+START-OF-SELECTION.
+
+SELECT LTX FROM T247 INTO STRING_TABL
+  WHERE SPRAS = SY-LANGU.
+
+ APPEND STRING_TABL.
+ENDSELECT.
+
+CREATE OBJECT CL_REF.
+
+**CALL METHOD CL_REF->BEAD_STRINGS
+** EXPORTING
+**  STR_TAB   = STRING_TABL[]
+**  SEPARATOR = '-'
+** RECEIVING
+** STRNG = RESULT.
+**
+
+RESULT = CL_REF->BEAD_STRINGS( STR_TAB   = STRING_TABL[]
+                                SEPARATOR = '-' ).
+IF SY-SUBRC <> 0.
+
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+         DISPLAY LIKE 'E'.
+ELSE.
+
+ WRITE:/5 RESULT.
+ENDIF.

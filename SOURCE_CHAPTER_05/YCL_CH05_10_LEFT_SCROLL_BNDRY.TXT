@@ -1,0 +1,25 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH05_10_LEFT_SCROLL_BNDRY
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH05_10_LEFT_SCROLL_BNDRY LINE-SIZE 160.
+
+****************************************
+* SET LEFT SCROLL-BOUNDARY COLUMN <c> **
+****************************************
+
+TABLES: YCL_CH05_KNAT5T.
+
+****************************************
+START-OF-SELECTION.
+
+SELECT * FROM YCL_CH05_KNAT5T.
+ SET LEFT SCROLL-BOUNDARY COLUMN 22.
+ WRITE:/5(5) SY-DBCNT, YCL_CH05_KNAT5T-KUNNR USING NO EDIT MASK, YCL_CH05_KNAT5T-NAME1,
+  YCL_CH05_KNAT5T-STRAS, YCL_CH05_KNAT5T-ORT01, YCL_CH05_KNAT5T-PSTLZ,
+  YCL_CH05_KNAT5T-LANDX.
+ENDSELECT.

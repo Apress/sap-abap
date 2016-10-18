@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN05
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN05.
+
+*********************************************
+* Demo AT SELECTION-SCREEN ON <field name> **
+*********************************************
+
+********************************************************************
+* you are triggering the event AT SELECTION-SCREEN ON <field name>**
+* for two fields: (1) KUNNR (2) ORT01. the event for ORT01 is     **
+* positioned first and then event for KUNNR. this positioning of  **
+* events is immaterial. since KUNNR is positioned on the selection**
+* first, the event AT SELECTION-SCREEN ON KUNNR will be triggered **
+* first followed by the event AT SELECTION-SCREEN ON ORT01        **
+*                                                                 **
+* which ever validating first field triggers error will be        **
+* reported. on correction of this field's error, error of         **
+* subsequent field if any will be reported. at any time only      **
+* one field's error will be reported                              **
+********************************************************************
+
+PARAMETERS: NAME1 TYPE KNA1-NAME1,
+            KUNNR TYPE KNA1-KUNNR,
+            ORT01 TYPE KNA1-ORT01.
+*****************************************
+AT SELECTION-SCREEN ON ORT01.
+
+IF ORT01 IS INITIAL.
+ MESSAGE E013(YCL_CH07_MCLASS01).
+ENDIF.
+******************************************
+AT SELECTION-SCREEN ON KUNNR.
+
+IF KUNNR IS INITIAL.
+ MESSAGE E013(YCL_CH07_MCLASS01).
+ENDIF.

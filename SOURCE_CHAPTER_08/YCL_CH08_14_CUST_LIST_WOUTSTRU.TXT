@@ -1,0 +1,75 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_14_CUST_LIST_WOUTSTRU
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_14_CUST_LIST_WOUTSTRU LINE-SIZE 140 LINE-COUNT 60
+        NO STANDARD PAGE HEADING.
+
+*************************************************************
+* List Customers - Use Field Symbol To Access Row Directly **
+* No Work Area/Header Line                                 **
+*************************************************************
+
+****************************************************
+* the GET RUN TIME statement is used to ascertain **
+* the execution time for a program block in micro **
+* seconds. the first time it is executed, it      **
+* assigns zero to the specified variable. from    **
+* the second and subsequent occurrences, it loads **
+* /assigns cumulative elapsed time in micro       **
+* seconds.                                        **
+*                                                 **
+* so you can determine the execution time of a    **
+* program block by subtracting the value assigned **
+* at the beginning of programming block from the  **
+* value assigned at the end of the programming    **
+* block (difference)                              **
+****************************************************
+
+DATA: TIME_ELAPSED  TYPE I VALUE 100,
+      DATE_CHR(10)  TYPE C.
+DATA: CUSTOMERS_TAB LIKE STANDARD TABLE OF
+       YCL_CH05_CUST_STRU.
+
+FIELD-SYMBOLS: <FS1> LIKE LINE OF CUSTOMERS_TAB.
+               " specifying TYPE/LIKE to static data object
+************************************************
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001, DATE_CHR, 130 TEXT-002, 137(3) SY-PAGNO.
+SKIP 1.
+WRITE:/5(135) SY-ULINE.
+WRITE:/6 TEXT-003, 12 TEXT-004, 23 TEXT-005, 60 TEXT-006, 96
+ TEXT-007, 130 TEXT-008.
+WRITE:/6 TEXT-009, 13 TEXT-010, 131 TEXT-010.
+WRITE:/5(135) SY-ULINE.
+
+************************************************
+START-OF-SELECTION.
+
+GET RUN TIME FIELD TIME_ELAPSED.
+
+CONCATENATE SY-DATUM+6(2) SY-DATUM+4(2) SY-DATUM+0(4) INTO DATE_CHR
+   SEPARATED BY '/'.
+
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1
+   INTO TABLE CUSTOMERS_TAB.
+
+SORT CUSTOMERS_TAB BY KUNNR.
+
+LOOP AT CUSTOMERS_TAB ASSIGNING <FS1>.
+         " <FS1> addresses/accesses first row, second row & so on
+
+ WRITE:/5(5) SY-TABIX, <FS1>-KUNNR USING NO EDIT MASK,
+         <FS1>-NAME1, <FS1>-STRAS, " structure components/fields are
+         <FS1>-ORT01, <FS1>-PSTLZ. " addressable because <FS1> TYPE to static data object
+ENDLOOP.
+
+GET RUN TIME FIELD TIME_ELAPSED.
+
+SKIP 2.
+WRITE:/5 'Time elapsed:', (9) TIME_ELAPSED.

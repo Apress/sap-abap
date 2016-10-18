@@ -1,0 +1,259 @@
+*&---------------------------------------------------------------------*
+*& Report YCL_CH10_ILISTS03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_ILISTS03 NO STANDARD PAGE HEADING
+        LINE-COUNT 60.
+
+*****************************************************************
+* Customer Wise Sales Summary & 2 Level Detail.                **
+* 1. Click On A Customer To List Billing Docs Of That Customer **
+* 2. Click On A Billing Doc To List items Of That Billing Doc. **
+*****************************************************************
+
+*************************************************
+* primary list same as the output of program   **
+* YCL_CH06_ITAB05. copy those lines.           **
+*                                              **
+* secondary list I same as the output of       **
+* program YCL_CH10_ILISTS02. copy those lines. **
+*                                              **
+* to pass info from secondary list I to II, use**
+* the HIDE statement after the WRITE statement **
+* in secondary list I like:                    **
+* HIDE: BILLS_STRU-VBELN, BILLS_STRU-KURRF.    **
+*                                              **
+* declare internal table, structure to store   **
+* data to be output for secondary list. II     **
+* declare data to total amount to be output    **
+* in secondary list II.                        **
+*                                              **
+* in the event block AT LINE-SELECTION:-       **
+* 1.ensure that the system field SY-LSIND Does **
+*   not exceed 2. chech value of SY_LSIND and  **
+*   code for appropriate secondary lists       **
+*                                              **
+* 2. load internal table from database table   **
+*    VBRP for value in BILLS_STRU-VBELN        **
+*                                              **
+* 3. initialize total field for secondary      **
+*    list II                                   **
+*                                              **
+* 4. set up LOOP AT...ENDLOOP to output        **
+*    secondary list II and build secondary     **
+*    list II total.                            **
+*                                              **
+* 5. code for the secondary list II heading    **
+*    using event TOP-OF-PAGE DURING            **
+*    LINE-SELECTION                            **
+*                                              **
+* 6. end of loop, output secondary list II     **
+*    total                                     **
+*                                              **
+* 7. check for no data condition in primary    **
+*    list, issue message for no data           **
+*    you have done no data check for secondary **
+*    lists I & II though not necessary         **
+*                                              **
+* 8. use GET CURSOR statement to determine     **
+*    user double clicked on a valid output     **
+*    field on the primary and secondary list I,**
+*    generate subsequent lists only if double  **
+*    click on valid fields                     **
+*************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+
+      BEGIN OF BILLS_STRU,
+       VBELN    TYPE VBRK-VBELN,
+       FKDAT    TYPE VBRK-FKDAT,
+       WAERK    TYPE VBRK-WAERK,
+       KURRF    TYPE VBRK-KURRF,
+       NETWR    TYPE VBRK-NETWR,
+      END OF BILLS_STRU,
+      BILLS_TAB LIKE STANDARD TABLE OF BILLS_STRU,
+
+      BEGIN OF BILL_ITEMS_STRU,
+       MATNR    TYPE VBRP-MATNR, " material code
+       FKIMG    TYPE VBRP-FKIMG, " quantity
+       VRKME    TYPE VBRP-VRKME, " unit of measure
+       NETWR    TYPE VBRP-NETWR, " amount for item
+      END OF BILL_ITEMS_STRU,
+      BILL_ITEMS_TAB LIKE STANDARD TABLE OF BILL_ITEMS_STRU,
+
+      KUNNR    TYPE KNA1-KUNNR,
+      NAME1    TYPE KNA1-NAME1,
+      TOTAL    TYPE VBRK-NETWR,
+      TOTAL1   TYPE VBRK-NETWR,
+      TOTAL2   TYPE VBRK-NETWR,
+      FNAME    TYPE STRING, " to store field name in GET CURSOR
+
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING.
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS VALUE CHECK
+            DEFAULT 3000.
+**********************************************
+
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS,
+         102 TEXT-003, 107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT. "assignment to TYPE STRING drops trailing blanks
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+IF SY-DBCNT > 0.
+
+ SORT SALES_TAB BY KUNNR.
+
+ LOOP AT SALES_TAB INTO SALES_STRU.
+  WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+   SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+  TOTAL = TOTAL + SALES_STRU-NETWR.
+ ENDLOOP.
+
+ SKIP 1.
+ WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.
+ELSE.
+ MESSAGE S021(YCL_CH07_MCLASS01) WITH " no data for the company code
+  'Primary List' DISPLAY LIKE 'W'.
+ENDIF.
+********************************************************************
+********************************************************************
+AT LINE-SELECTION.
+
+IF SY-LSIND > 2. " ensure SY-LSIND does not exceed 2
+ SY-LSIND = 2.
+
+ELSE.
+ CASE SY-LSIND.
+
+ WHEN 1.
+
+  GET CURSOR FIELD FNAME. "check for cursor on a field
+  IF FNAME <> 'SY-TABIX' AND FNAME <> 'SALES_STRU-KUNNR' AND
+    FNAME <> 'SALES_STRU-NAME1' AND FNAME <> 'SALES_STRU-NETWR'.
+
+   SY-LSIND = SY-LSIND - 1.
+   EXIT.
+  ENDIF.
+
+  TOTAL1 = 0.
+  KUNNR = SY-LISEL+9(10).  " extract customer code
+  NAME1 = SY-LISEL+20(35). " extract customer name
+
+  SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK INTO TABLE BILLS_TAB
+   WHERE KUNAG = KUNNR AND BUKRS = CCODE.
+
+  IF SY-DBCNT = 0.
+   MESSAGE S021(YCL_CH07_MCLASS01) WITH 'Secondary List I' DISPLAY LIKE 'W'.
+   SY-LSIND = 0.
+   EXIT.
+  ENDIF.
+  LOOP AT BILLS_TAB INTO BILLS_STRU.
+
+
+   BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+   TOTAL1 = TOTAL1 + BILLS_STRU-NETWR.
+   WRITE:/5(4) SY-TABIX, BILLS_STRU-VBELN, BILLS_STRU-FKDAT,
+   BILLS_STRU-WAERK, (15) BILLS_STRU-NETWR.
+
+   HIDE: BILLS_STRU-KURRF, BILLS_STRU-VBELN.
+
+  ENDLOOP.
+
+  SKIP 1.
+  WRITE:/38(15) TOTAL1.
+
+*************************************
+ WHEN 2.
+
+  GET CURSOR FIELD FNAME. "check for cursor on a field
+  IF FNAME <> 'SY-TABIX' AND FNAME <> 'BILLS_STRU-VBELN' AND
+    FNAME <> 'BILLS_STRU-FKDAT' AND FNAME <> 'BILLS_STRU-WAERK'
+    AND FNAME <> 'BILLS_STRU-NETWR'.
+
+   SY-LSIND = SY-LSIND - 1.
+   EXIT.
+  ENDIF.
+
+
+  TOTAL2 = 0.
+
+  SELECT MATNR FKIMG VRKME NETWR FROM VBRP INTO TABLE BILL_ITEMS_TAB
+   WHERE VBELN = BILLS_STRU-VBELN.
+
+  IF SY-DBCNT = 0.
+   MESSAGE S021(YCL_CH07_MCLASS01) WITH 'Secondary List II' DISPLAY LIKE 'W'.
+   SY-LSIND = 1.
+   EXIT.
+  ENDIF.
+
+  LOOP AT BILL_ITEMS_TAB INTO BILL_ITEMS_STRU.
+
+   BILL_ITEMS_STRU-NETWR = BILL_ITEMS_STRU-NETWR * BILLS_STRU-KURRF.
+   TOTAL2 = TOTAL2 + BILL_ITEMS_STRU-NETWR.
+   WRITE:/5(4) SY-TABIX, BILL_ITEMS_STRU-MATNR, (12) BILL_ITEMS_STRU-FKIMG,
+   BILL_ITEMS_STRU-VRKME, (15) BILL_ITEMS_STRU-NETWR.
+  ENDLOOP.
+
+  SKIP 1.
+  WRITE:/46(15) TOTAL2.
+
+
+ ENDCASE.
+
+ ENDIF.
+*******************************************************************
+*******************************************************************
+TOP-OF-PAGE DURING LINE-SELECTION. " event for secondary list headers
+
+CASE SY-LSIND.
+
+ WHEN 1.
+
+  WRITE:/5 TEXT-011, 44 TEXT-003, 49(3) SY-PAGNO.
+  WRITE:/5 KUNNR USING NO EDIT MASK NO-GAP, '/' NO-GAP, NAME1.
+  WRITE:/5(48) SY-ULINE.
+  WRITE:/5 TEXT-004, 10 TEXT-012, 21 TEXT-013, 32 TEXT-014,
+    46 TEXT-008.
+  WRITE:/6 TEXT-009, 32 TEXT-015.
+  WRITE:/5(48) SY-ULINE.
+
+ WHEN 2.
+
+  WRITE:/5 TEXT-016, BILLS_STRU-VBELN, 53 TEXT-003, 59(3) SY-PAGNO.
+  WRITE:/5(56) SY-ULINE.
+  WRITE:/5 TEXT-004, 11 TEXT-017, 32 TEXT-018, 42 TEXT-019, 55 TEXT-008.
+  WRITE:/6 TEXT-009.
+  WRITE:/5(56) SY-ULINE.
+
+ENDCASE.
+*******************************************************************

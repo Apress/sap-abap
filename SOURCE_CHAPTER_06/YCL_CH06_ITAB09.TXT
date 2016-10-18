@@ -1,0 +1,76 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB09
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB09.
+
+***************************************
+* Internal Tables - INSERT.. INDEX.. **
+***************************************
+********************************************
+* declare structure TCURT, internal table **
+* of this structure                       **
+*                                         **
+* input INSERT row number PARAMETERS      **
+*                                         **
+* load internal table with data from      **
+* database table TCURT for currency code  **
+* starting with 'I' - WHERE WAERS LIKE    **
+* 'I%'.                                   **
+*                                         **
+* LOOP...ENDLOOP. output from internal    **
+* table output: pre-insert                **
+*                                         **
+* INSERT TCURT INTO CURR_TAB index REC_NO **
+*                                         **
+* if SY-SUNRC = 0 LOOP..ENDLOOP output   **
+* from internal table: post insert        **
+* else                                    **
+* output error                            **
+********************************************
+
+
+TABLES TCURT. " currency description text table
+
+DATA : CURR_TAB TYPE STANDARD TABLE OF TCURT.
+
+PARAMETERS: REC_NO(2) TYPE N DEFAULT 5.
+
+START-OF-SELECTION.
+SELECT * FROM TCURT INTO TABLE CURR_TAB
+         WHERE SPRAS = 'E' AND WAERS LIKE 'I%'. " currency codes starting
+                                                " with I
+
+WRITE: /5 'Pre-Insertion:'.
+
+LOOP AT CURR_TAB INTO TCURT.
+ WRITE: /5(2) SY-TABIX, TCURT-WAERS, TCURT-LTEXT.
+ENDLOOP.
+
+TCURT = SPACE. " initial structure TCURT
+
+TCURT-WAERS = 'IJK'.
+TCURT-LTEXT = 'DUMMY CURRENCY'.
+
+INSERT TCURT INTO CURR_TAB INDEX REC_NO.
+
+IF SY-SUBRC = 0.
+ SKIP 1.
+ WRITE: /5 'Post-Insertion:'.
+
+ LOOP AT CURR_TAB INTO TCURT.
+  WRITE: /5(2) SY-TABIX, TCURT-WAERS, TCURT-LTEXT.
+ ENDLOOP.
+
+ELSE.
+ SKIP 1.
+ FORMAT INVERSE COLOR COL_NEGATIVE.
+ WRITE:/5 'Error Inserting Row No.', (2) REC_NO.
+
+
+FORMAT RESET.
+ENDIF.

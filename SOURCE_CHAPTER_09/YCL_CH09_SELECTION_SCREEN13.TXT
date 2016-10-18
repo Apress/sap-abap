@@ -1,0 +1,61 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN13
+*&
+*&---------------------------------------------------------------------*
+*&,
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN13.
+
+****************************************************
+* Given The DDIC Table/Structure Name, Field Name **
+* Return Data Element Texts Including Short Text  **
+* Function Module: 'MG_FIELDNAME_TEXT'            **
+****************************************************
+
+DATA:  VAR1  TYPE STRING VALUE 'KNA1-KUNNR',
+       VAR2  TYPE STRING VALUE 'VBRK-VBELN',
+       TAB   TYPE STRING,
+       FLD   TYPE STRING.
+
+*********************************
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 5(15) COMM1.
+SELECT-OPTIONS CUST_CD FOR (VAR1).
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 5(15) COMM2.
+*PARAMETERS: DOC_NO TYPE VBRK-VBELN.
+SELECT-OPTIONS DOC_NO FOR (VAR2).
+SELECTION-SCREEN END OF LINE.
+**************************************
+
+INITIALIZATION.
+
+TAB = 'KNA1'.
+FLD = 'KUNNR'.
+
+PERFORM LABELLING USING COMM1 TAB FLD.
+
+TAB = 'VBRK'.
+FLD = 'VBELN'.
+
+PERFORM LABELLING USING COMM2 TAB FLD.
+
+*******************************************************
+FORM LABELLING USING COMMENT VALUE(TABLE) VALUE(FIELD).
+
+CALL FUNCTION 'MG_FIELDNAME_TEXT'
+  EXPORTING
+    TABNAME         = TABLE
+    FIELDNAME       = FIELD
+ IMPORTING
+*   SCRTEXT_S       = SH_LBL
+   SCRTEXT_M       = COMMENT
+*   SCRTEXT_L       = LN_LBL
+*   REPTEXT         = HD_LBL
+*   DDTEXT          = DD_LBL
+          .
+ENDFORM.

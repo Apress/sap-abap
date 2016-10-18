@@ -1,0 +1,65 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB10
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB10 LINE-SIZE 95 LINE-COUNT 60
+        NO STANDARD PAGE HEADING.
+
+**************************************************************************
+* DELETE ADJACENT DUPLICATES - List of Customers With Billing Documents **
+**************************************************************************
+**************************************************
+* declare structure and internal table          **
+*                                               **
+* input company code - PARAMETERS               **
+*                                               **
+* load internal table -SELECT etc.              **
+*                                               **
+* sort internal table BY KUNNR                  **
+* DELETE ADJACENT DUPLICATES...COMPARING KUNNR  **
+*                                               **
+* LOOP AT...WRITE..ENDLOOP.                     **
+**************************************************
+DATA: BEGIN OF CUST_STRU,
+       KUNNR TYPE  KNA1-KUNNR,
+       NAME1 TYPE  KNA1-NAME1,
+       ORT01 TYPE  KNA1-ORT01,
+      END OF CUST_STRU,
+
+      CUST_TAB LIKE STANDARD TABLE OF CUST_STRU,
+
+      BUTXT    TYPE T001-BUTXT.
+*************************************************
+PARAMETERS CCODE TYPE VBRK-BUKRS DEFAULT 3000 VALUE CHECK.
+
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001 NO-GAP, CCODE NO-GAP, '/' NO-GAP, BUTXT, 92(2) SY-PAGNO.
+WRITE:/5(88) SY-ULINE.
+WRITE:/5 TEXT-002, 11 TEXT-003, 22 TEXT-004, 58 TEXT-005.
+WRITE:/6 TEXT-006, 13 TEXT-007.
+WRITE:/5(88) SY-ULINE.
+
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT FROM T001 INTO (BUTXT) WHERE BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 FROM YCL_CH05_VBRKKNA
+       INTO TABLE CUST_TAB
+       WHERE BUKRS = CCODE.
+
+SORT CUST_TAB BY KUNNR.
+
+DELETE ADJACENT DUPLICATES FROM CUST_TAB COMPARING KUNNR.
+
+**************************************************************
+LOOP AT CUST_TAB INTO CUST_STRU.
+
+ WRITE:/5(4) SY-TABIX, CUST_STRU-KUNNR USING NO EDIT MASK,
+             CUST_STRU-NAME1, CUST_STRU-ORT01.
+
+ENDLOOP.

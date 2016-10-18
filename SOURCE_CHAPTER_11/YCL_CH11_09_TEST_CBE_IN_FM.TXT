@@ -1,0 +1,45 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_09_TEST_CBE_IN_FM
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_09_TEST_CBE_IN_FM.
+
+**************************************************
+* Demo Class Based Exception in Function Module **
+**************************************************
+
+DATA: TABA     TYPE STRING_TABLE,
+      RESULT   TYPE STRING,
+      EXCPT    TYPE REF TO YCX_YCL_CH11_EXCEPTIONS1,
+      ERR_TEXT TYPE STRING.
+
+PARAMETERS: LOAD_DAT(1)  TYPE C DEFAULT 'X'.
+
+START-OF-SELECTION.
+
+IF LOAD_DAT = 'X'.
+ SELECT LTX FROM T247 INTO TABLE TABA WHERE SPRAS = SY-LANGU.
+ENDIF.
+
+TRY.
+
+CALL FUNCTION 'YCL_CH11_FM_DEMO_CBE'
+ IMPORTING
+   RETURN_STR                    = RESULT
+  TABLES
+    STR_TAB                      = TABA
+          .
+
+WRITE:/5 'Result:', RESULT. " all non-error statements
+
+CATCH YCX_YCL_CH11_EXCEPTIONS1 INTO EXCPT.
+
+ERR_TEXT = EXCPT->IF_MESSAGE~GET_TEXT( ).
+
+MESSAGE ERR_TEXT TYPE 'S' DISPLAY LIKE 'E'.
+
+ENDTRY.

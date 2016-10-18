@@ -1,0 +1,23 @@
+FUNCTION CONVERSION_EXIT_ICOMA_INPUT.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     VALUE(INPUT)
+*"  EXPORTING
+*"     VALUE(OUTPUT)
+*"----------------------------------------------------------------------
+DATA: INPUT1(18)  TYPE C.
+INPUT1 = INPUT.
+DO.
+REPLACE ',' WITH '' INTO INPUT1.
+ IF SY-SUBRC <> 0.
+  EXIT.
+ ENDIF.
+ENDDO.
+CONDENSE INPUT1 NO-GAPS.
+OUTPUT = INPUT1.
+
+
+
+
+ENDFUNCTION.

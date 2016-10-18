@@ -1,0 +1,106 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH14_05_TABLE_CTRL
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCH_CH14_05_TABLE_CTRL.
+
+*******************************
+* Demonstrate Table Control  **
+*******************************
+
+CONTROLS:ITEMS TYPE TABLEVIEW USING SCREEN 300.
+
+TABLES: YCL_CH14_KNVB, YCL_CH14_VBP_MKT.
+
+DATA: BILLSH_TAB  TYPE STANDARD TABLE OF YCL_CH14_KNVB,
+      BILLSI_TAB  TYPE STANDARD TABLE OF YCL_CH14_VBP_MKT,
+      OK_CODE     TYPE SY-UCOMM,
+      NO_ROWS     TYPE SY-TABIX,
+      CUR_ROW     TYPE SY-TABIX,
+      ONCE(1)     TYPE C.
+**************************************************
+
+START-OF-SELECTION.
+CALL SCREEN 300.
+
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0300 OUTPUT.
+
+IF ONCE = ' '.
+
+ ONCE = 'X'.
+ SET PF-STATUS 'STAT1'.
+
+ SELECT * FROM YCL_CH14_KNVB INTO TABLE BILLSH_TAB UP TO 100 ROWS
+   WHERE VBELN >= '0090023219' .
+
+ NO_ROWS = SY-DBCNT.
+ SORT BILLSH_TAB BY VBELN.
+ CUR_ROW = 1.
+ PERFORM READ_ITEMS.
+
+ENDIF.
+
+OK_CODE = ' '.
+
+ENDMODULE.                 " STATUS_0300  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+MODULE USER_COMMAND_0300 INPUT.
+
+CASE OK_CODE.
+
+ WHEN 'EXIT'.
+  LEAVE PROGRAM.
+
+ WHEN 'FIRST'.
+ CUR_ROW = 1.
+ PERFORM READ_ITEMS.
+
+ WHEN 'NEXT'.
+ IF CUR_ROW < NO_ROWS.
+  CUR_ROW = CUR_ROW + 1.
+  PERFORM READ_ITEMS.
+ ENDIF.
+
+ WHEN 'PREV'.
+ IF CUR_ROW > 1.
+  CUR_ROW = CUR_ROW - 1.
+  PERFORM READ_ITEMS.
+ ENDIF.
+
+ WHEN 'LAST'.
+ IF CUR_ROW < NO_ROWS.
+  CUR_ROW = NO_ROWS.
+  PERFORM READ_ITEMS.
+
+ENDIF.
+
+ENDCASE.
+
+ENDMODULE.                 " USER_COMMAND_0300  INPUT
+
+***********************************************
+FORM READ_ITEMS.
+
+ READ TABLE BILLSH_TAB INTO YCL_CH14_KNVB INDEX CUR_ROW.
+
+ SELECT * FROM YCL_CH14_VBP_MKT INTO TABLE BILLSI_TAB WHERE
+   VBELN = YCL_CH14_KNVB-VBELN.
+
+ ITEMS-LINES = SY-DBCNT.
+
+ENDFORM.

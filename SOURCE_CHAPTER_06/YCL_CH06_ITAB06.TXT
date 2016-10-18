@@ -1,0 +1,92 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB06
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB06 LINE-SIZE 115 LINE-COUNT 60
+         NO STANDARD PAGE HEADING.
+
+********************************************************
+* Customer Wise Sales Summary of a company code using **
+* COLLECT statement using a sorted internal table     **
+********************************************************
+
+**********************************************************
+* declare sales summary structure. declare internal     **
+* table by referring to this structure                  **
+*                                                       **
+* PARAMETERS to input company code                      **
+* SELECT SINGLE.. to fetch company code name(BUTXT)     **
+* operating currency of company code WAERS              **
+*                                                       **
+* SELECT...ENDSELECT to fetch rows from database view   **
+* multiply NETWR KURRF to convert NETWR to operating    **
+* currency. initialize KURRF to 0 after multiplication  **
+* to prevent KURRF accumulation overflow.               **
+* operation. issue COLLECT                              **
+*                                                       **
+* at end of SELECT...ENDSELECT, summary table created   **
+*                                                       **
+* set up LOOP...WRITE...ENDLOOP                         **
+*                                                       **
+* end of LOOP...WRITE...ENDLOOP output grand total      **
+**********************************************************
+
+DATA: BEGIN OF SALES_STRU,
+       KUNNR   TYPE KNA1-KUNNR,
+       NAME1   TYPE KNA1-NAME1,
+       ORT01   TYPE KNA1-ORT01,
+*       VBELN   TYPE VBRK-VBELN,
+       NETWR   TYPE VBRK-NETWR,
+       KURRF   TYPE VBRK-KURRF,
+      END OF SALES_STRU,
+
+      SALES_TAB LIKE SORTED TABLE OF SALES_STRU WITH UNIQUE KEY
+        KUNNR NAME1 ORT01, "VBELN,
+
+      TOTAL    TYPE VBRK-NETWR,
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING.
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS VALUE CHECK DEFAULT 3000.
+
+**********************************************
+
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS, 102 TEXT-003,
+         107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS)
+ WHERE BUKRS = CCODE.
+BUTXTS = BUTXT.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0.
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+LOOP AT SALES_TAB INTO SALES_STRU.
+ WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+  SALES_STRU-NAME1,   SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+ TOTAL = TOTAL + SALES_STRU-NETWR.
+ENDLOOP.
+**********************************************************
+
+SKIP 1.
+WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.

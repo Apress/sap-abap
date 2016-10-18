@@ -1,0 +1,40 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB03 NO STANDARD PAGE HEADING.
+
+****************************************************************
+* Internal Tables - Split a String & Get Words Into itab Rows **
+****************************************************************
+*****************************************
+* PARAMETERS - input string            **
+*                                      **
+* perform SPLIT statement, each word   **
+* will be returned as a row in the     **
+* unstructured internal table          **
+*                                      **
+* set LOOP AT...ENDLOOP to output      **
+* rows of unstructured internal table  **
+*****************************************
+
+DATA: WORD(15)    TYPE C,
+      WORDS_TAB   LIKE STANDARD TABLE OF WORD. "unstructured internal table
+
+PARAMETERS: ISTRING(50)  TYPE C DEFAULT
+   'ONCE UPON A TIME THERE LIVED A NERD'.
+
+*****************************************************************
+START-OF-SELECTION.
+
+SPLIT ISTRING AT ' ' INTO TABLE WORDS_TAB. "each word returned as a row
+
+LOOP AT WORDS_TAB INTO WORD.
+
+ WRITE:/5 WORD.
+
+ENDLOOP.

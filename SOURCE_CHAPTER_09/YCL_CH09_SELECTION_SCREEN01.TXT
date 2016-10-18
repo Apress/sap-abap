@@ -1,0 +1,134 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN01
+   MESSAGE-ID YCL_CH07_MCLASS01.
+
+****************************************************
+* SLECTION-SCREEN - Create SE38 Look Alike Screen **
+* Put Icon & Text On SLECTION-SCREEN Push Buttons **
+* Without Usage Of Function Module 'ICON_CREATE'  **
+****************************************************
+
+*********************************************************
+* generate 2 blank lines:                              **
+* SELECTION-SCREEN SKIP 2.                             **
+*                                                      **
+* three elements on the same line:                     **
+*       (1) a label 'Program' for field                **
+*       (2) a field (of type text box)                 **
+*           to input the program name                  **
+*       (3) a 'Create' push button                     **
+*                                                      **
+* SELECTION-SCREEN BEGIN OF LINE.                      **
+* SELECTION-SCREEN COMMENT 1(20) TEXT-001.             **
+* PARAMETERS PROGRAM TYPE TRDIRT-NAME MATCHCODE OBJECT **
+*   ...... VISIBLE LENGTH 30.                          **
+* SELECTION-SCREEN PUSHBUTTON 53(15) TEXT-002          **
+* USER-COMMAND CREAT.                                  **
+* SELECTION-SCREEN END OF LINE.                        **
+*                                                      **
+* a gap of one line i.e.                               **
+* SELECTION-SCREEN SKIP 1.                             **
+*                                                      **
+* START block with title 'Subobjects' & shaded effect  **
+* extending to half the screen width:                  **
+*                                                      **
+* SELECTION-SCREEN BEGIN OF BLOCK BL1 WITH FRAME       **
+* TITLE TEXT-003 NO INTERVALS.                         **
+*                                                      **
+* five radio buttons. each radio button with           **
+* label on the same line:                              **
+*                                                      **
+* SELECTION-SCREEN BEGIN OF LINE.                      **
+* PARAMETERS: SRCE RADIOBUTTON GROUP GRP.              **
+* SELECTION-SCREEN COMMENT 2(20) TEXT-004.             **
+* SELECTION-SCREEN END OF LINE.                        **
+* ........                                             **
+* ........                                             **
+* a gap of one line after 5 radio buttons i.e.         **
+* SELECTION-SCREEN SKIP 1.                             **
+*                                                      **
+* two push buttons ('Display' & 'Change') on same line **
+*                                                      **
+* SELECTION-SCREEN BEGIN OF LINE.                      **
+* SELECTION-SCREEN PUSHBUTTON 1(15) TEXT-009...        **
+* .....                                                **
+* ......                                               **
+* SELECTION-SCREEN END OF LINE.                        **
+*                                                      **
+* SELECTION-SCREEN END OF BLOCK BL1                    **
+*                                                      **
+*********************************************************
+
+SELECTION-SCREEN SKIP 2. " 2 blank lines at top
+
+SELECTION-SCREEN BEGIN OF LINE.
+  SELECTION-SCREEN COMMENT 1(15) TEXT-001. " label 'Program'
+
+  PARAMETERS PROGRAM TYPE TRDIRT-NAME MATCHCODE OBJECT
+    YCL_CH09_TRDIRT VISIBLE LENGTH 30. " input program name
+
+  SELECTION-SCREEN PUSHBUTTON 53(15) TEXT-002
+    USER-COMMAND CREAT. " push button 'Create'
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN SKIP 1. " a blank line
+
+SELECTION-SCREEN BEGIN OF BLOCK BL1 WITH FRAME TITLE
+ TEXT-003 NO INTERVALS. " block BL1 commencement
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS SRCE RADIOBUTTON GROUP GRP. " radio button Source
+    SELECTION-SCREEN COMMENT 2(20) TEXT-004.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS VARA RADIOBUTTON GROUP GRP. " radio button Variants
+    SELECTION-SCREEN COMMENT 2(20) TEXT-005.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS ATTR RADIOBUTTON GROUP GRP. " radio button Attributes
+    SELECTION-SCREEN COMMENT 2(20) TEXT-006.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS DOCU RADIOBUTTON GROUP GRP. " radio button Documentation
+    SELECTION-SCREEN COMMENT 2(20) TEXT-007.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    PARAMETERS TXEL RADIOBUTTON GROUP GRP. " radio button Text elements
+    SELECTION-SCREEN COMMENT 2(20) TEXT-008.
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN  SKIP 1. " a blank line
+
+  SELECTION-SCREEN BEGIN OF LINE.
+
+    SELECTION-SCREEN PUSHBUTTON 01(15) TEXT-009 " @10@ Display
+     USER-COMMAND DISPL. " push button 'Display'
+    SELECTION-SCREEN PUSHBUTTON 19(15) TEXT-010 " @0Z@ Change
+     USER-COMMAND CHANG. " push button 'Change'
+
+  SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK BL1.
+
+*********************************************************
+AT SELECTION-SCREEN. " triggered when user interacts with
+                     " the Selection-Screen
+CASE SY-UCOMM.
+ WHEN 'CREAT'.
+ MESSAGE I011 WITH 'Create'.
+ WHEN 'DISPL'.
+ MESSAGE I011 WITH 'Display'.
+ WHEN 'CHANG'.
+ MESSAGE I011 WITH 'Change'.
+ENDCASE.

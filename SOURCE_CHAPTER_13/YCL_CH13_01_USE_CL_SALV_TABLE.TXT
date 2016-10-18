@@ -1,0 +1,265 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH13_01_USE_CL_SALV_TABLE
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH13_01_USE_CL_SALV_TABLE.
+
+********************************************************************
+* you can copy screen 100, status 'STAT1' and title 'TITLE1' from **
+* program 'YCL_CH12_02_ALV_FCAT_ETC'                              **
+*                                                                 **
+* declarations:-                                                  **
+* ==============                                                  **
+* local class definition deferred                                 **
+*                                                                 **
+* global data                                                     **
+* -----------                                                     **
+* 1    stru for customer wise sales summary                       **
+*      (this contains the field KURRF to convert amounts)         **
+* 2.   internal table customer wise sales summary                 **
+*      (this does not contain the field KURRF. passed as parameter**
+*       to the 'FACTORY' method)                                  **
+* 3. reference variable - instance of 'CL_SALV_TABLE'             **
+* 4.                      instance of 'CL_GUI_CUSTOM_CONTAINER'   **
+* 5.                      instance of 'CX_SALV_MSG' exception     **
+* 6.                      instance of 'CL_SALV_FUNCTIONS_LIST'    **
+* 7.                      instance of 'CL_SALV_COLUMNS_TABLE'     **
+* 8.                      instance of 'CL_SALV_COLUMN_TABLE'      **
+* 9.                      instance of 'CL_SALV_AGGREGATIONS'      **
+* 10.                     instance of 'CL_SALV_AGGREGATION'       **
+* 11.                     instance of 'CL_SALV_LAYOUT'            **
+* 12. layout key equivalent to DISVARIANT in CL_GUI_ALV_GRID      **
+* 13. structure to pass color specification to column             **
+* 14. OK_CODE                                                     **
+* 15. company code description - from T001                        **
+* 16. currency code of company code - from T001                   **
+*                                                                 **
+* local class for exception reporting of 'CL_SALV_TABLE'          **
+* definition & implementation                                     **
+*                                                                 **
+* PARAMETERS prompt for company code                              **
+*                                                                 **
+* START-OF-SELECTION                                              **
+* ==================                                              **
+* retrieve single row from T001                                   **
+* set up SELECT.. COLLECT.. ENDSELECT for generating summary      **
+* sort customer wise sales summary internal table by KUNNR        **
+* CALL SCREEN 100.                                                **
+*                                                                 **
+* PBO code                                                        **
+* ========                                                        **
+* set pf status, set title                                        **
+* create instance of custom container                             **
+* call 'FACTORY' method                                           **
+*                                                                 **
+* <ALV instance>->GET_COLUNNS.                                    **
+* set column properties - KUNNR: EDIT_MASK..                      **
+* set column properties - all columns for color                   **
+*                                                                 **
+* <ALV instance>->GET_AGGREGATIONS. set aggregation for NETWR     **
+*                                                                 **
+* <ALV instance>->GET_FUNCTIONS. set for all functions            **
+* set for functions - ..LAYOUT_CHANGE, ..LAYOUT_MAINTAIN and      **
+*                     ..LAYOUT_SAVE                               **
+*                                                                 **
+* <ALV instance>->GET_LAYOUT. set for layout                      **
+*                                                                 **
+* <ALV instance>->DISPLAY( ).                                     **
+*                                                                 **
+* PAI code                                                        **
+* ========                                                        **
+* check OK_CODE = 'BACK', if so SET SCREEN 0. LEAVE SCREEN.       **
+*                                                                 **
+********************************************************************
+
+CLASS LCLASS DEFINITION DEFERRED.
+
+DATA:
+      SALES_TAB  TYPE STANDARD TABLE OF " data - summary
+             YCL_CH12_SALES_SUM_STRU WITH HEADER LINE,
+      SALES_STRU TYPE LINE OF YCL_CH06_SALES_SUM_TAB,
+
+      ALV_GRID   TYPE REF TO CL_SALV_TABLE,
+      CCONT      TYPE REF TO CL_GUI_CUSTOM_CONTAINER,
+      ERROR      TYPE REF TO CX_SALV_MSG, " SALV exception
+      FUNCTIONS  TYPE REF TO CL_SALV_FUNCTIONS_LIST, " functions
+      COLUMNS    TYPE REF TO CL_SALV_COLUMNS_TABLE, " get columns
+      COLUMN     TYPE REF TO CL_SALV_COLUMN_TABLE,  " get column
+      AGGS       TYPE REF TO CL_SALV_AGGREGATIONS, " get aggregations
+      AGG        TYPE REF TO CL_SALV_AGGREGATION,  " get aggregation
+      LAYOUT_REF TYPE REF TO CL_SALV_LAYOUT, " for layout management
+
+      LAYOUT_KEY TYPE SALV_S_LAYOUT_KEY, " for layout management
+      COL_STRU   TYPE LVC_S_COLO, " for color
+
+      OK_CODE    TYPE SY-UCOMM,
+      BUTXT      TYPE T001-BUTXT,
+      WAERS      TYPE T001-WAERS.
+
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS DEFAULT 3000.
+
+*************************************************
+*************************************************
+CLASS LCLASS DEFINITION.
+ PUBLIC SECTION.
+ CLASS-METHODS:
+
+  SALV_ERROR_MSG
+   IMPORTING
+    ERROR TYPE REF TO CX_SALV_MSG.
+
+
+ENDCLASS.
+
+CLASS LCLASS IMPLEMENTATION.
+
+ METHOD SALV_ERROR_MSG.  " report error in ALV
+  DATA: MESSAG TYPE BAL_S_MSG,
+        TYPE   TYPE C VALUE 'E' .
+
+  MESSAG = ERROR->GET_MESSAGE( ).
+
+  MESSAGE ID MESSAG-MSGID
+  TYPE TYPE "TYPE MESSAG-MSGTY
+  NUMBER MESSAG-MSGNO
+  WITH MESSAG-MSGV1
+       MESSAG-MSGV2
+       MESSAG-MSGV3
+       MESSAG-MSGV4.
+
+ ENDMETHOD.
+
+ENDCLASS.
+
+*************************************************
+*************************************************
+
+START-OF-SELECTION.
+
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+
+ MOVE-CORRESPONDING SALES_STRU TO SALES_TAB.
+ COLLECT SALES_TAB INTO SALES_TAB.
+
+ENDSELECT.
+
+SORT SALES_TAB BY KUNNR.
+
+CALL SCREEN 100.
+
+*********************************************
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+
+SET PF-STATUS 'STAT1'.
+
+SET TITLEBAR 'TITLE1' WITH CCODE BUTXT WAERS.
+
+CREATE OBJECT CCONT
+  EXPORTING
+    CONTAINER_NAME              = 'CUST_CONTT'.
+
+***** call static method FACTORY *****
+TRY.
+
+  CALL METHOD CL_SALV_TABLE=>FACTORY
+   EXPORTING
+    R_CONTAINER       = CCONT " reference to container
+*    LIST_DISPLAY      = ' '    " ' ' else run time error
+   IMPORTING
+    R_SALV_TABLE      = ALV_GRID  " get instance
+   CHANGING
+    T_TABLE           = SALES_TAB[]. " data
+
+  CATCH CX_SALV_MSG INTO ERROR.
+  CALL METHOD LCLASS=>SALV_ERROR_MSG
+   EXPORTING
+    ERROR = ERROR.
+
+ENDTRY.
+
+
+******* optimize column width********
+
+ COLUMNS = ALV_GRID->GET_COLUMNS( ).
+ COLUMNS->SET_OPTIMIZE( VALUE = 'X' ).
+
+**** color to columns
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'KUNNR').
+ COLUMN->SET_EDIT_MASK( VALUE = ' ' ).
+
+ COL_STRU-COL = 1.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'NAME1').
+ COL_STRU-COL = 2.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+ COLUMN->SET_LOWERCASE( ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'ORT01').
+ COL_STRU-COL = 3.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+ COLUMN->SET_LOWERCASE( ).
+
+ COLUMN ?= COLUMNS->GET_COLUMN( COLUMNNAME = 'NETWR').
+ COL_STRU-COL = 4.
+ COLUMN->SET_COLOR( VALUE = COL_STRU ).
+
+**** aggregation setting for NETWR *****
+
+ AGGS = ALV_GRID->GET_AGGREGATIONS( ).
+
+ AGG = AGGS->ADD_AGGREGATION( COLUMNNAME = 'NETWR' AGGREGATION = 1 ).
+
+************ enable all(full) default functions *********
+
+FUNCTIONS = ALV_GRID->GET_FUNCTIONS( ).
+*FUNCTIONS->SET_DEFAULT( ).
+FUNCTIONS->SET_ALL( ). "DEFAULT( ).
+
+***** set more functions *****
+
+FUNCTIONS->SET_LAYOUT_CHANGE( 'X' ).
+FUNCTIONS->SET_LAYOUT_MAINTAIN( 'X' ).
+FUNCTIONS->SET_LAYOUT_SAVE( 'X' ).
+
+***** for save, maintain layouts *****
+
+LAYOUT_REF = ALV_GRID->GET_LAYOUT( ).
+LAYOUT_KEY-REPORT = 'YCL_CH13_01_USE_CL_SALV_TABLE'.
+
+LAYOUT_REF->SET_KEY( LAYOUT_KEY ).
+LAYOUT_REF->SET_SAVE_RESTRICTION( '1' ).
+  " equivalent to the I_SAVE parameter in
+  " the method SET_TABLE_FOR_FIRST_DISPLAY
+
+*
+ ALV_GRID->DISPLAY( ).
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+
+MODULE USER_COMMAND_0100 INPUT.
+IF OK_CODE = 'BACK'.
+ SET SCREEN 0.
+ LEAVE SCREEN.
+ENDIF.
+ENDMODULE.                 " USER_COMMAND_0100  INPUT

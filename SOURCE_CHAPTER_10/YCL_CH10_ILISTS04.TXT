@@ -1,0 +1,242 @@
+*&---------------------------------------------------------------------*
+*& Report YCL_CH10_ILISTS03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH10_ILISTS03 NO STANDARD PAGE HEADING
+        LINE-COUNT 60.
+
+*****************************************************************
+* Customer Wise Sales Summary & 2 Level Detail.                **
+* (use event AT USER-COMMAND)                                  **
+*                                                              **
+* 1. Select A Customer & Click On The 'Detail I' button To     **
+*    List Billing Docs Of That Customer                        **
+* 2. Select A Billing Doc & Click On The 'Detail II' button To **
+*    List items Of That Billing Doc.                           **
+*****************************************************************
+
+DATA: SALES_TAB  TYPE YCL_CH06_SALES_SUM_TAB,
+      SALES_STRU LIKE LINE OF SALES_TAB,
+
+      BEGIN OF BILLS_STRU,
+       VBELN    TYPE VBRK-VBELN,
+       FKDAT    TYPE VBRK-FKDAT,
+       WAERK    TYPE VBRK-WAERK,
+       KURRF    TYPE VBRK-KURRF,
+       NETWR    TYPE VBRK-NETWR,
+      END OF BILLS_STRU,
+      BILLS_TAB LIKE STANDARD TABLE OF BILLS_STRU,
+
+      BEGIN OF BILL_ITEMS_STRU,
+       MATNR    TYPE VBRP-MATNR, " material code
+       FKIMG    TYPE VBRP-FKIMG, " quantity
+       VRKME    TYPE VBRP-VRKME, " unit of measure
+       NETWR    TYPE VBRP-NETWR, " amount for item
+      END OF BILL_ITEMS_STRU,
+      BILL_ITEMS_TAB LIKE STANDARD TABLE OF BILL_ITEMS_STRU,
+
+      KUNNR    TYPE KNA1-KUNNR,
+      NAME1    TYPE KNA1-NAME1,
+      TOTAL    TYPE VBRK-NETWR,
+      TOTAL1   TYPE VBRK-NETWR,
+      TOTAL2   TYPE VBRK-NETWR,
+      FNAME    TYPE STRING, " to store field name in GET CURSOR
+
+      BUTXT    TYPE T001-BUTXT,
+      WAERS    TYPE T001-WAERS,
+      BUTXTS   TYPE STRING,
+
+      BACK_TXT TYPE SMP_DYNTXT, "text for BACK button
+      DTL2_TXT TYPE SMP_DYNTXT, "text for DETAIL2 button
+      MNU_BAR2 TYPE SMP_DYNTXT. "text for menu bar
+
+**********************************************
+PARAMETERS: CCODE TYPE VBRK-BUKRS VALUE CHECK
+            DEFAULT 3000.
+**********************************************
+
+TOP-OF-PAGE.
+
+WRITE:/5 TEXT-001, CCODE NO-GAP, '/' NO-GAP,  BUTXTS,
+         102 TEXT-003, 107(3) SY-PAGNO.
+WRITE:/40 TEXT-002, WAERS.
+SKIP 1.
+WRITE:/5(104) SY-ULINE.
+WRITE:/5 TEXT-004, 11 TEXT-005, 23 TEXT-006, 60 TEXT-007, 91(17)
+         TEXT-008 RIGHT-JUSTIFIED.
+WRITE:/5 TEXT-009, 13 TEXT-010.
+WRITE:/5(104) SY-ULINE.
+
+**********************************************
+START-OF-SELECTION.
+
+********************************************
+* to supply dynamic texts to menu painter **
+********************************************
+
+BACK_TXT-TEXT      = TEXT-020.
+BACK_TXT-ICON_ID   = '@CF@'.
+BACK_TXT-ICON_TEXT = TEXT-020.
+BACK_TXT-QUICKINFO = TEXT-020.
+
+DTL2_TXT-TEXT      = TEXT-021.
+DTL2_TXT-ICON_ID   = '@16@'.
+DTL2_TXT-ICON_TEXT = TEXT-021.
+DTL2_TXT-QUICKINFO = TEXT-021.
+
+MNU_BAR2-TEXT = TEXT-022.
+
+***********************************************
+SELECT SINGLE BUTXT WAERS FROM T001 INTO (BUTXT, WAERS) WHERE
+       BUKRS = CCODE.
+
+BUTXTS = BUTXT. "assignment to TYPE STRING drops trailing blanks
+
+SELECT KUNNR NAME1 ORT01 NETWR KURRF FROM YCL_CH05_VBRKKNA INTO
+  CORRESPONDING FIELDS OF SALES_STRU WHERE BUKRS = CCODE.
+
+ SALES_STRU-NETWR =  SALES_STRU-NETWR * SALES_STRU-KURRF.
+ SALES_STRU-KURRF = 0. "to prevent overflow
+ COLLECT SALES_STRU INTO SALES_TAB.
+ENDSELECT.
+
+IF SY-DBCNT > 0.
+
+ SORT SALES_TAB BY KUNNR.
+
+ SET PF-STATUS 'STAT1'. " status for primary list
+
+ LOOP AT SALES_TAB INTO SALES_STRU.
+  WRITE :/5(4) SY-TABIX, SALES_STRU-KUNNR USING NO EDIT MASK,
+   SALES_STRU-NAME1,SALES_STRU-ORT01, (17) SALES_STRU-NETWR.
+  TOTAL = TOTAL + SALES_STRU-NETWR.
+ ENDLOOP.
+
+ SKIP 1.
+ WRITE :/(17) TOTAL UNDER SALES_STRU-NETWR.
+ELSE.
+ MESSAGE S021(YCL_CH07_MCLASS01) WITH " no data for the comapny code
+  'Primary List' DISPLAY LIKE 'W'.
+ENDIF.
+********************************************************************
+********************************************************************
+AT USER-COMMAND.
+
+ CASE SY-UCOMM. " interrogate the contents/function code of SY-UCOMM
+
+ WHEN 'EXIT'.
+  SET SCREEN 0.
+  LEAVE SCREEN. " navigate to selection screen
+
+ WHEN 'BACK'.
+   SY-LSIND = SY-LSIND - 2. " navigate to previous list
+
+ WHEN 'DETAIL1'.
+
+  GET CURSOR FIELD FNAME. "check for cursor on a field
+  IF FNAME <> 'SY-TABIX' AND FNAME <> 'SALES_STRU-KUNNR' AND
+    FNAME <> 'SALES_STRU-NAME1' AND FNAME <> 'SALES_STRU-NETWR'.
+
+   SY-LSIND = SY-LSIND - 1.
+   EXIT.
+  ENDIF.
+
+  TOTAL1 = 0.
+  KUNNR = SY-LISEL+9(10).  " extract customer code
+  NAME1 = SY-LISEL+20(35). " extract customer name
+
+  SELECT VBELN FKDAT WAERK KURRF NETWR FROM VBRK INTO TABLE BILLS_TAB
+   WHERE KUNAG = KUNNR AND BUKRS = CCODE.
+
+  IF SY-DBCNT = 0.
+   MESSAGE S021(YCL_CH07_MCLASS01) WITH 'Secondary List I' DISPLAY LIKE 'W'.
+   SY-LSIND = 0.
+   EXIT.
+  ENDIF.
+
+  SET PF-STATUS 'STAT2'. " status for secondary list I
+  LOOP AT BILLS_TAB INTO BILLS_STRU.
+
+
+   BILLS_STRU-NETWR = BILLS_STRU-NETWR * BILLS_STRU-KURRF.
+   TOTAL1 = TOTAL1 + BILLS_STRU-NETWR.
+   WRITE:/5(4) SY-TABIX, BILLS_STRU-VBELN, BILLS_STRU-FKDAT,
+   BILLS_STRU-WAERK, (15) BILLS_STRU-NETWR.
+
+   HIDE: BILLS_STRU-KURRF, BILLS_STRU-VBELN.
+
+  ENDLOOP.
+
+  SKIP 1.
+  WRITE:/38(15) TOTAL1.
+
+*************************************
+ WHEN 'DETAIL2'.
+
+  GET CURSOR FIELD FNAME. "check for cursor on a field
+  IF FNAME <> 'SY-TABIX' AND FNAME <> 'BILLS_STRU-VBELN' AND
+    FNAME <> 'BILLS_STRU-FKDAT' AND FNAME <> 'BILLS_STRU-WAERK'
+    AND FNAME <> 'BILLS_STRU-NETWR'.
+
+   SY-LSIND = SY-LSIND - 1.
+   EXIT.
+  ENDIF.
+
+
+  TOTAL2 = 0.
+
+  SELECT MATNR FKIMG VRKME NETWR FROM VBRP INTO TABLE BILL_ITEMS_TAB
+   WHERE VBELN = BILLS_STRU-VBELN.
+
+  IF SY-DBCNT = 0.
+   MESSAGE S021(YCL_CH07_MCLASS01) WITH 'Secondary List II' DISPLAY LIKE 'W'.
+   SY-LSIND = 1.
+   EXIT.
+  ENDIF.
+
+  SET PF-STATUS 'STAT2' EXCLUDING 'DETAIL2'. " status for secondary list II
+  LOOP AT BILL_ITEMS_TAB INTO BILL_ITEMS_STRU.
+
+   BILL_ITEMS_STRU-NETWR = BILL_ITEMS_STRU-NETWR * BILLS_STRU-KURRF.
+   TOTAL2 = TOTAL2 + BILL_ITEMS_STRU-NETWR.
+   WRITE:/5(4) SY-TABIX, BILL_ITEMS_STRU-MATNR, (12) BILL_ITEMS_STRU-FKIMG,
+   BILL_ITEMS_STRU-VRKME, (15) BILL_ITEMS_STRU-NETWR.
+  ENDLOOP.
+
+  SKIP 1.
+  WRITE:/46(15) TOTAL2.
+
+
+ ENDCASE.
+
+* ENDIF.
+*******************************************************************
+*******************************************************************
+TOP-OF-PAGE DURING LINE-SELECTION. " event for secondary list headers
+
+CASE SY-LSIND.
+
+ WHEN 1.
+
+  WRITE:/5 TEXT-011, 44 TEXT-003, 49(3) SY-PAGNO.
+  WRITE:/5 KUNNR USING NO EDIT MASK NO-GAP, '/' NO-GAP, NAME1.
+  WRITE:/5(48) SY-ULINE.
+  WRITE:/5 TEXT-004, 10 TEXT-012, 21 TEXT-013, 32 TEXT-014,
+    46 TEXT-008.
+  WRITE:/6 TEXT-009, 32 TEXT-015.
+  WRITE:/5(48) SY-ULINE.
+
+ WHEN 2.
+
+  WRITE:/5 TEXT-016, BILLS_STRU-VBELN, 53 TEXT-003, 59(3) SY-PAGNO.
+  WRITE:/5(56) SY-ULINE.
+  WRITE:/5 TEXT-004, 11 TEXT-017, 32 TEXT-018, 42 TEXT-019, 55 TEXT-008.
+  WRITE:/6 TEXT-009.
+  WRITE:/5(56) SY-ULINE.
+
+ENDCASE.
+*******************************************************************

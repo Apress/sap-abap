@@ -1,0 +1,111 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_01_DESCRIBE_FLD_MODUL
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_01_DESCRIBE_FLD_MODUL.
+
+********************************************************
+* DESCRIBE FIELD: Determine Attributes of Data objects *
+* Modularize Code. Usage of Macro & Subroutine         *
+********************************************************
+
+************************************************************************
+* declare elementary data objects referring to DDIC table fields      **
+* declare elementary data object referring to DDIC data element       **
+* declare structure data object referring to DDIC table definition    **
+* declare elementary TYPE STRING                                      **
+*                                                                     **
+* invoke macro which uses DESCRIBE FIELD to determine TYPE.           **
+* from within the macro, PERFORM subroutine which uses DESCRIBE FIELD **
+*                        to determine length.                         **
+*                                                                     **
+* from within the macro, output attributes TYPE, length               **
+* (also no of decimals for TYPE P, no of components for structure)    **
+*                                                                     **
+************************************************************************
+
+DATA: NAME1          TYPE KNA1-NAME1, "DDIC table field
+      FKDAT          TYPE VBRK-FKDAT, "DDIC table field
+      NETWR          TYPE VBRK-NETWR, "DDIC table field
+      TEXT1          TYPE TBOOKSHOP-TEXT1,  "DDIC table field
+      LENGTH         TYPE TBOOKSHOP-LENGTH, "DDIC table field
+      WAERS          TYPE WAERS, "reference to data element
+      INT1           TYPE MCSAPINT1, "reference to data element
+      VBRK           TYPE VBRK, "reference to table structure
+      STRNG          TYPE STRING,
+
+      TYP(1)         TYPE C,
+      LEN            TYPE I,
+      DECI           TYPE I,
+      COMPO          TYPE I.
+
+***********************************************
+* macro to avoid repetition of similar lines **
+* macro takes two parameters:                **
+*                          &1 the field name **
+*                          &2 text symbol id.**
+***********************************************
+DEFINE DESCRIBE_FLD. " macro definition
+
+ DESCRIBE FIELD &1 TYPE TYP. " determine TYPE
+ PERFORM GET_LENGTH USING &1 LEN TYP. " determine length
+
+ IF TYP <> 'F' AND TYP <> 'P' AND TYP <> 'u' AND TYP <> 'v'.
+  WRITE:/5 &2, TYP, (4) LEN.
+
+ ELSEIF TYP = 'F' OR TYP = 'P'.
+  DESCRIBE FIELD &1 DECIMALS DECI. " determine no of decimals
+  WRITE:/5 &2, TYP, (4) LEN, (2) DECI.
+
+ ELSEIF TYP = 'u' OR TYP = 'v'.
+ DESCRIBE FIELD &1 TYPE TYP COMPONENTS COMPO. " determine no of fields
+  WRITE:/5 &2, TYP, (4) LEN, (3) COMPO.
+*  DESCRIBE FIELD &1 COMPONENTS COMPO.
+
+ENDIF.
+END-OF-DEFINITION.
+*****************************************
+START-OF-SELECTION.
+
+DESCRIBE_FLD NAME1 TEXT-001. " macro calls
+
+DESCRIBE_FLD FKDAT TEXT-002.
+
+DESCRIBE_FLD NETWR TEXT-003.
+
+DESCRIBE_FLD TEXT1 TEXT-004.
+
+DESCRIBE_FLD LENGTH TEXT-005.
+
+DESCRIBE_FLD WAERS TEXT-006.
+
+DESCRIBE_FLD INT1 TEXT-007.
+
+DESCRIBE_FLD VBRK TEXT-008.
+
+DESCRIBE_FLD STRNG TEXT-009.
+
+***************************************************************
+* subroutine to determine length. takes three parameters     **
+* (1) field (FLD) whose length is to be determined - by value**
+* (2) returning field length (LNGT) - by reference           **
+* (3) field TYPE (TP) - by value                             **
+*                                                            **
+* returns length in characters for TYPES C, D, N, T          **
+* returns length in bytes for TYPES other than C, D, N, T    **
+***************************************************************
+FORM GET_LENGTH USING VALUE(FLD) LNGT VALUE(TP).
+
+IF TP <> 'C' AND TP <> 'D' AND TP <> 'N' AND TP <> 'T'.
+
+ DESCRIBE FIELD FLD LENGTH LNGT IN BYTE MODE.
+
+ELSE.
+ DESCRIBE FIELD FLD LENGTH LNGT IN CHARACTER MODE.
+
+ENDIF.
+ENDFORM.

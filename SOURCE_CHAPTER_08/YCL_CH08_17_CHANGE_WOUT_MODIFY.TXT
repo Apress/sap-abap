@@ -1,0 +1,100 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_17_CHANGE_WOUT_MODIFY
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_17_CHANGE_WOUT_MODIFY.
+
+*******************************************************
+* Repeat Of Program YCL_CH06_ITAB11 - Without MODIFY **
+* Usage/Demo of Field Symbol                         **
+*******************************************************
+
+************************************************************
+* table T005U is a text table. it contains the state/     **
+* region/province texts of all countries. like for        **
+* example it contains the texts of all the indian states  **
+* and union territories. the texts are in all the         **
+* languages supported. the primary key fields of this     **
+* table are                                               **
+*           MANDT   client code                           **
+*           SPRAS   language key code                     **
+*           LAND1   country code                          **
+*           BLAND   state/region/province code            **
+*                                                         **
+* the text field is BEZEI                                 **
+*                                                         **
+* for india (LAND1 = 'IN'), language english (language    **
+* key code SPRAS = 'E'), the state code '01': the state   **
+* has been miss-spelt. it is 'Andra Pradesh' instead of   **
+* being 'Andhra Pradesh' (letter h is missing in first    **
+* word)                                                   **
+*                                                         **
+* similarly for BLAND = '26' the text is 'Andaman und     **
+* Nico.In.' instead of 'Andaman and Nico.In.' ('and' has  **
+* miss-spelt as 'und'                                     **
+*                                                         **
+* you will load texts of indian states in english into a  **
+* sorted internal table from database table T005U.        **
+* (WHERE SPRAS = 'E' AND LAND1 = 'IN')                    **
+* this sorted table defined key will be MANDT, SPRAS,     **
+* LAND1, BLAND                                            **
+*                                                         **
+* you will READ first row using ASSIGNING <field symbol   **
+* notation. (READ TABLE.. INDEX..)                        **
+* you will assign the text field:                         **
+* BEZEI = 'Andhra Pradesh'                                **
+*                                                         **
+* this will change the value in the row as you are        **
+* pointing to the row via field symbol <ROW_POINT>        **
+*                                                         **
+* you will READ the row using ASSIGNING <field symbol     **
+* notation. (READ TABLE.. WITH KEY..)                     **
+*                                                         **
+* key field values:                                       **
+* MANDT = 800, SPRAS = 'E', LAND1 = 'IN', BLAND = '26'    **
+*                                                         **
+* you will assign the text field:                         **
+* BEZEI = 'Andaman and Nico.In.                           **
+*                                                         **
+* this will change the value in the row as you are        **
+* pointing to the row via field symbol <ROW_POINT>        **
+*                                                         **
+* this is happening only in the internal table. no        **
+* changes are occurring in the database table T005U       **
+************************************************************
+
+DATA: STATES_TAB LIKE SORTED TABLE OF T005U WITH UNIQUE KEY
+      MANDT SPRAS LAND1 BLAND.
+
+FIELD-SYMBOLS <ROW_POINT> LIKE LINE OF STATES_TAB.
+*************************************************************
+START-OF-SELECTION.
+
+SELECT * FROM T005U INTO TABLE STATES_TAB WHERE
+         SPRAS = 'E' AND LAND1 = 'IN'.
+
+WRITE:/5 'Pre Correction Output (Only States Starting With A)'.
+SKIP.
+LOOP AT STATES_TAB ASSIGNING <ROW_POINT> WHERE BEZEI CP 'A*'.
+ WRITE:/5 <ROW_POINT>-BLAND, <ROW_POINT>-BEZEI.
+ENDLOOP.
+
+READ TABLE STATES_TAB INDEX 1 ASSIGNING <ROW_POINT>.
+
+<ROW_POINT>-BEZEI = 'Andhra Pradesh'.
+
+READ TABLE STATES_TAB WITH KEY MANDT = '800' SPRAS = 'E' LAND1 = 'IN'
+      BLAND = '26' ASSIGNING <ROW_POINT>.
+
+<ROW_POINT>-BEZEI = 'Andaman and Nico.In.'.
+
+SKIP 3.
+WRITE:/5 'Post Correction Output (Only States Starting With A)'.
+SKIP.
+LOOP AT STATES_TAB ASSIGNING <ROW_POINT> WHERE BEZEI CP 'A*'.
+ WRITE:/5 <ROW_POINT>-BLAND, <ROW_POINT>-BEZEI.
+ENDLOOP.

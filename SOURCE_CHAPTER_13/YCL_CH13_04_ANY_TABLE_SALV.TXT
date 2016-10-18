@@ -1,0 +1,289 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH13_04_ANY_TABLE_SALV
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH13_04_ANY_TABLE_SALV NO STANDARD PAGE HEADING.
+
+*************************************************************
+* Output Specific Fields Of A Specific Database Table/View **
+* in ALV (use class CL_SALV_TABLE)                         **
+* out of maximum of 90 fields/colunms                      **
+* ouyput column length maximum of 128 characters           **
+* etc.                                                     **
+*************************************************************
+
+DATA: BEGIN OF FIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME," field name
+       POSITION  TYPE DD03L-POSITION, " field position in stru 1, 2..
+                                      " line no. & field position map
+                                      " one-to-one. helps in accessing
+                                      " a field with line no.
+       INTTYPE   TYPE DD03L-INTTYPE,  " ABAP TYPE: C,D,F,I,N,P etc.
+       DATATYPE  TYPE DD03L-DATATYPE, " DDIC TYPE: CHAR, NUMC etc.
+       KEYFLAG   TYPE DD03L-KEYFLAG,  " flag for primary key field
+       CBOX(1)   TYPE C,              " field enabled/disabled check box
+      END OF FIELDS_STRU,
+
+      BEGIN OF SFIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF SFIELDS_STRU,
+
+      BEGIN OF ORDERBY_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF ORDERBY_STRU,
+
+      FIELDS_TAB  LIKE STANDARD TABLE OF FIELDS_STRU, " all fields of
+                                                      " selected table
+
+      SFIELDS_TAB LIKE STANDARD TABLE OF SFIELDS_STRU," selected fields of
+                                                      " selected table. used
+                                                      " in SELECT statement
+
+      ORDERBY_TAB LIKE STANDARD TABLE OF ORDERBY_STRU,  " primary key fields
+                                                        " (in sort)
+      CONDS_TAB   TYPE STRING OCCURS 0 WITH HEADER LINE, " condition for
+                                                         " text tables
+      CK_BOX(1)  TYPE C, " READ..FIELDS_STRU-CBOX INTO..
+      TABCLASS   TYPE DD02L-TABCLASS, " destination field from table DD02L
+
+**** extra code in this program over YCL_CH10_ILISTS05 *****
+
+      ITAB       TYPE REF TO DATA,
+      ALV_GRID   TYPE REF TO CL_SALV_TABLE,
+      COLUMNS    TYPE REF TO CL_SALV_COLUMNS_TABLE,
+      COLUMN     TYPE REF TO CL_SALV_COLUMN,
+
+      LAYOUT_REF TYPE REF TO CL_SALV_LAYOUT, " for layout management
+      LAYOUT_KEY TYPE SALV_S_LAYOUT_KEY, " for layout management
+
+      FUNCTIONS  TYPE REF TO CL_SALV_FUNCTIONS_LIST.
+
+**** extra code over *****
+
+FIELD-SYMBOLS: <DSTRU>, " field symbol to access structure
+               <FLD>,   " field symbol to access field
+
+***** extra definition in this program *****
+               <iTAB> TYPE ANY TABLE.  " field symbol to access itab
+
+***********SELECTION-SCREEN***************************
+PARAMETERS: TAB_NAME  TYPE DD03L-TABNAME VALUE CHECK.
+
+AT SELECTION-SCREEN.
+
+SELECT SINGLE TABCLASS FROM DD02L INTO TABCLASS WHERE TABNAME = TAB_NAME.
+
+IF TABCLASS <> 'TRANSP' AND TABCLASS <> 'CLUSTER' AND
+  TABCLASS <> 'POOL' AND TABCLASS <> 'VIEW'.
+ MESSAGE E022(YCL_CH07_MCLASS01) WITH TAB_NAME.
+ENDIF.
+
+***********************************************************
+***********************************************************
+
+START-OF-SELECTION.
+
+SELECT FIELDNAME POSITION INTTYPE DATATYPE KEYFLAG FROM DD03L
+ INTO CORRESPONDING FIELDS OF TABLE FIELDS_TAB
+ WHERE TABNAME = TAB_NAME AND FIELDNAME NOT LIKE '.%'." AND
+"  FIELDNAME NOT LIKE '/%'.
+
+SORT FIELDS_TAB BY POSITION.
+
+PERFORM LISTER.
+
+**************************
+* AT USER-COMMAND event **
+**************************
+
+AT USER-COMMAND.
+
+CASE SY-UCOMM.
+
+ WHEN 'EXIT'.
+ SET SCREEN 0.
+ LEAVE SCREEN.
+
+ WHEN 'BACK'.
+  SY-LSIND = SY-LSIND - 2.
+
+*****************select all**************
+ WHEN 'SALL'.
+
+ LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+  MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM 'X'
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+****************de-select all*************
+ WHEN 'DSALL'.
+
+  LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+   MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM ' '
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+********************output***************
+ WHEN 'DDATA'.
+ REFRESH: SFIELDS_TAB, ORDERBY_TAB, CONDS_TAB. " OHEAD_TAB
+                " initialize internal tables
+
+******determine selected fields, build internal tables******
+ DO.
+  READ LINE SY-INDEX FIELD VALUE FIELDS_STRU-CBOX INTO CK_BOX.
+  IF SY-SUBRC <> 0. " no more lines in the list
+   EXIT.
+  ENDIF.
+  IF CK_BOX = 'X'.
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   SFIELDS_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+   APPEND SFIELDS_STRU TO SFIELDS_TAB.
+
+
+   ASSIGN COMPONENT SY-INDEX OF STRUCTURE <DSTRU> TO <FLD>.
+
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+   IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ELSE.
+
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+  IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ENDIF.
+ ENDDO.
+
+
+ DESCRIBE TABLE SFIELDS_TAB.
+
+ IF SY-TFILL = 0. " no fields selected
+  MESSAGE S023(YCL_CH07_MCLASS01) WITH
+  TAB_NAME DISPLAY LIKE 'W'.
+  SY-LSIND = SY-LSIND - 1.
+  EXIT.
+ ENDIF.
+
+**** changed code in this program over YCL_CH10_ILISTS05 *****
+**************************************************************
+
+ IF SY-TFILL > 90. " no of fields selected > 90
+  MESSAGE S025(YCL_CH07_MCLASS01) WITH
+  TAB_NAME DISPLAY LIKE 'W'.
+  SY-LSIND = SY-LSIND - 1.
+  EXIT.
+ ENDIF.
+
+****** no pf status, as ALV tool bar replaces application tool bar
+
+ SET TITLEBAR 'TITLE02' WITH TAB_NAME.
+
+**************retrieve data & output***********************
+
+ CREATE DATA ITAB TYPE STANDARD TABLE OF (TAB_NAME).
+ ASSIGN ITAB->* TO <ITAB>.
+ SELECT (SFIELDS_TAB) FROM (TAB_NAME) INTO CORRESPONDING FIELDS OF
+  TABLE <ITAB> WHERE (CONDS_TAB) ORDER BY (ORDERBY_TAB).
+
+
+ CALL METHOD CL_SALV_TABLE=>FACTORY
+   EXPORTING
+     LIST_DISPLAY   = IF_SALV_C_BOOL_SAP=>TRUE
+*    R_CONTAINER    =
+*    CONTAINER_NAME =
+   IMPORTING
+     R_SALV_TABLE   = ALV_GRID
+   CHANGING
+     T_TABLE        = <ITAB>
+    .
+
+ COLUMNS = ALV_GRID->GET_COLUMNS( ).
+
+
+ LOOP AT FIELDS_TAB INTO FIELDS_STRU.
+  IF FIELDS_STRU-CBOX = 'X'.
+   CONTINUE.
+  ENDIF.
+
+***** make unselected columns technical columns *****
+
+  COLUMN = COLUMNS->GET_COLUMN(  COLUMNNAME = FIELDS_STRU-FIELDNAME ).
+  COLUMN->SET_TECHNICAL( VALUE = 'X' ).
+ ENDLOOP.
+
+
+ LAYOUT_REF = ALV_GRID->GET_LAYOUT( ).
+ LAYOUT_KEY-REPORT = 'YCL_CH13_04_ANY_TABLE_SALV'.
+
+ LAYOUT_REF->SET_KEY( LAYOUT_KEY ).
+ LAYOUT_REF->SET_SAVE_RESTRICTION( '2' ).
+
+ FUNCTIONS = ALV_GRID->GET_FUNCTIONS( ).
+ FUNCTIONS->SET_ALL( ). "DEFAULT( ).
+ FUNCTIONS->SET_LAYOUT_CHANGE( 'X' ).
+ FUNCTIONS->SET_LAYOUT_MAINTAIN( 'X' ).
+ FUNCTIONS->SET_LAYOUT_SAVE( 'X' ).
+
+ COLUMNS->SET_OPTIMIZE( VALUE = 'X' ).
+
+ ALV_GRID->DISPLAY( ).
+
+ FREE ITAB.
+
+ENDCASE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&----------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*MODULE USER_COMMAND_0100 INPUT.
+* IF OK_CODE = 'BACK'.
+*  CALL METHOD CONT->FREE.
+*  PERFORM LISTER.
+*  LEAVE TO LIST-PROCESSING.
+** SY-LSIND = 0.
+*
+* ENDIF.
+*ENDMODULE.                 " USER_COMMAND_0100  INPUT
+*********************************************************
+FORM LISTER.
+SET PF-STATUS 'STAT1'.
+SET TITLEBAR 'TITLE01' WITH TAB_NAME.
+
+*********primary list - list of fields **********************
+
+LOOP AT FIELDS_TAB INTO FIELDS_STRU.
+ WRITE:/5 FIELDS_STRU-CBOX AS CHECKBOX, FIELDS_STRU-FIELDNAME.
+ENDLOOP.
+
+ENDFORM.

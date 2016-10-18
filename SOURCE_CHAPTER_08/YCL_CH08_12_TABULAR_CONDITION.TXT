@@ -1,0 +1,97 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH08_12_TABULAR_CONDITION
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_12_TABULAR_CONDITION.
+
+****************************
+* Tabular WHERE Condition **
+****************************
+*******************************************************
+* try this with customer codes: 473, 401081          **
+*                                                    **
+* the following billing documents will be loaded     **
+* into primary internal table PITAB                  **
+*                                                    **
+* customer code    billing document no.              **
+* (KUNAG)           (VBELN)                          **
+*                                                    **
+* 473                0090026209                      **
+* 473                0090029855                      **
+*                                                    **
+* 401081             0090032165                      **
+*                                                    **
+*                                                    **
+* corresponding to these three billing documents     **
+* the following materials/items will be loaded into  **
+* secondary internal table SITAB                     **
+*                                                    **
+* billing document no.     material code             **
+*  (VBELN)                   (MATNR)                 **
+*                                                    **
+* 0090026209                 HT-1011                 **
+* 0090026209                 HT-1010                 **
+*                                                    **
+* 0090029855                 HT-1011                 **
+*                                                    **
+* 0090032165                 HT-1040                 **
+*                                                    **
+*                                                    **
+*******************************************************
+*******************************************************
+* declare data. prompt input for two customers       **
+*                                                    **
+* load primary internal table with billing documents **
+* of the input customers                             **
+*                                                    **
+* load the secondary internal table with materials/  **
+* items belonging to the billing documents in the    **
+* primary internal table with the tabular WHERE      **
+* condition                                          **
+*                                                    **
+* output from primary, secondary internal tables     **
+*******************************************************
+DATA: BEGIN OF PITAB_STRU,
+       VBELN   TYPE VBELN_VF,
+       FKDAT   TYPE FKDAT,
+       KUNAG   TYPE KUNAG,
+       NETWR   TYPE NETWR,
+       WAERK   TYPE WAERK,
+      END OF PITAB_STRU,
+      PITAB LIKE STANDARD TABLE OF PITAB_STRU,
+      BEGIN OF SITAB_STRU,
+       VBELN   TYPE VBELN_VF,
+       MATNR   TYPE MATNR,
+       NETWR   TYPE NETWR,
+      END OF SITAB_STRU,
+      SITAB LIKE STANDARD TABLE OF SITAB_STRU.
+**********************************************************
+PARAMETERS: CUST_CD1  TYPE VBRK-KUNAG VALUE CHECK
+            DEFAULT '473',
+            CUST_CD2  TYPE VBRK-KUNAG VALUE CHECK
+            DEFAULT '401081'.
+
+*SELECT-OPTIONS CUST_CDS FOR PITAB_STRU-KUNAG.
+************************************************************
+START-OF-SELECTION.
+
+SELECT VBELN FKDAT KUNAG NETWR WAERK FROM VBRK
+ INTO TABLE PITAB WHERE KUNAG IN (CUST_CD1, CUST_CD2). " IN CUST_CDS
+
+SELECT VBELN MATNR NETWR FROM VBRP
+ INTO TABLE SITAB FOR ALL ENTRIES IN PITAB
+ WHERE VBELN = PITAB-VBELN. " tabular condition
+
+LOOP AT PITAB INTO PITAB_STRU.
+ WRITE:/5(4) SY-TABIX, PITAB_STRU-KUNAG, PITAB_STRU-VBELN.
+ENDLOOP.
+
+SKIP 2.
+
+LOOP AT SITAB INTO SITAB_STRU.
+ WRITE:/5(4) SY-TABIX, SITAB_STRU-VBELN, SITAB_STRU-MATNR.
+ENDLOOP.

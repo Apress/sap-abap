@@ -1,0 +1,62 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH07_03_STRU_AS_PARM
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH07_04_STRU_AS_PARM LINE-SIZE 95 LINE-COUNT 60
+         NO STANDARD PAGE HEADING.
+
+************************************************
+* Subroutine With Structure As Parameter      **
+* Simple Customer List                        **
+************************************************
+
+************************************************
+* declare internal table                      **
+*                                             **
+* report heading                              **
+* fill internal table from table KNA1         **
+* LOOP AT...PERFORM WRITER...ENDLOOP.         **
+*                                             **
+* FORM <subroutine using <structure>          **
+* TYPE YCL_CH05_CUST_STRU.                    **
+* WRITE...                                    **
+* ENDFORM                                     **
+************************************************
+
+DATA: CUSTOMER_TAB TYPE SORTED TABLE OF YCL_CH05_CUST_STRU
+                        WITH UNIQUE KEY KUNNR WITH HEADER LINE,
+      DAT(10)      TYPE C.
+
+***********************************************************
+TOP-OF-PAGE.
+WRITE:/5 TEXT-001, DAT, 81 TEXT-002, (3) SY-PAGNO.
+WRITE:/5(83) SY-ULINE.
+WRITE:/5 TEXT-003, 12 TEXT-004, 24 TEXT-005, 60 TEXT-006.
+WRITE:/6 TEXT-007, 14 TEXT-008.
+WRITE:/5(83) SY-ULINE.
+***********************************************************
+START-OF-SELECTION.
+
+CONCATENATE SY-DATUM+6(2) SY-DATUM+4(2) SY-DATUM+0(4) INTO DAT
+ SEPARATED BY '/'.
+
+SELECT KUNNR NAME1 STRAS ORT01 PSTLZ FROM KNA1 INTO TABLE CUSTOMER_TAB.
+
+LOOP AT CUSTOMER_TAB INTO CUSTOMER_TAB.
+ PERFORM WRITER USING CUSTOMER_TAB.
+ENDLOOP.
+
+***********************************************************
+FORM WRITER USING CUST_STRU STRUCTURE " key word STRUCTURE
+                  YCL_CH05_CUST_STRU. " structure parameter
+                                      " has to be assigned type
+                                      " for accessing fields
+
+ WRITE: /5(5) SY-TABIX, CUST_STRU-KUNNR USING NO EDIT MASK,
+       CUST_STRU-NAME1, CUST_STRU-ORT01.
+
+ENDFORM.

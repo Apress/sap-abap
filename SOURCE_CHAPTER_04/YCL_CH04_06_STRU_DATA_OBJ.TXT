@@ -1,0 +1,34 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_06_STRU_DATE_OBJ
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_06_STRU_DATA_OBJ.
+
+******************************************************
+* Structured Data Objects: Access Individual Fields **
+******************************************************
+
+**************************************************
+* declare structured data object. Assign        **
+* starting values to fields in the structured   **
+* data object. output these fields by accessing **
+* the individual fields.                        **
+**************************************************
+
+DATA: BEGIN OF CONTACT_MODES," CONTACT_MODES-name of struc data object
+
+  NAME(25)         TYPE C VALUE 'SURAJ NAIR',
+  LAND_LINE(12)    TYPE N VALUE '009126960021',
+  CELL_NO(14)      TYPE N VALUE '00919502102377',
+  EMAIL	           TYPE STRING VALUE 'snair23@gmail.com',
+
+END OF CONTACT_MODES.
+
+   WRITE :/5 'Name          :', CONTACT_MODES-NAME,
+          /5 'Land Line No. :', CONTACT_MODES-LAND_LINE,
+          /5 'Cell No.      :', CONTACT_MODES-CELL_NO,
+          /5 'Email Address :', CONTACT_MODES-EMAIL.

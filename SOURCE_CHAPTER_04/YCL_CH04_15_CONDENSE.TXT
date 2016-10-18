@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH04_15_CONDENSE
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH04_15_CONDENSE.
+
+***********************
+* CONDENSE Statement **
+***********************
+
+****************************************************************
+* take input string as ISTRING through PARAMETERS             **
+*                                                             **
+* assign ISTRING to OSTRING. operate CONDENSE on OSTRING.     **
+* output OSTRING                                              **
+*                                                             **
+* assign ISTRING to OSTRING. operate CONDENSE on OSTRING with **
+* NO-GAPS. output OSTRING                                     **
+*                                                             **
+* CONDENSE statement operation:                               **
+* (a) removes all leading/left side blanks. (b) it reduces    **
+* embedded blanks to one blank. (c) if the addition NO-GAPS   **
+* is specified, it reduces embedded blanks to zero i.e.       **
+* embedded blanks will be removed totally                     **
+****************************************************************
+
+DATA OSTRING(50)  TYPE C.
+PARAMETERS: ISTRING(50)  TYPE C DEFAULT
+ '    ABAP    LANGUAGE   BASICS'.
+
+MOVE ISTRING TO OSTRING.
+CONDENSE OSTRING.
+WRITE:/5 'Original String           :', ISTRING,
+      /5 'Condense String           :', OSTRING.
+
+MOVE ISTRING TO OSTRING.
+CONDENSE OSTRING NO-GAPS.
+WRITE:/5 'Condense String(NO-GAPS)  :', OSTRING.

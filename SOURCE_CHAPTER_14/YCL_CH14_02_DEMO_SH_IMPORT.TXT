@@ -1,0 +1,118 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH14_02_DEMO_SH_IMPORT
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH14_02_DEMO_SH_IMPORT.
+
+**********************************************
+* Demonstrate Search Help Import Parameters **
+**********************************************
+
+TABLES: YCL_CH14_VENDOR_PD_STRU.
+
+DATA: OK_CODE    TYPE SY-UCOMM,
+
+      DYN_TAB1   TYPE STANDARD TABLE OF DYNPREAD
+                  WITH HEADER LINE, " to output LIFNR BUKRS NAME1 ORT01
+
+      DYN_TAB2   TYPE STANDARD TABLE OF DYNPREAD
+                  WITH HEADER LINE. " to output blank EBELN BEDAT WAERS
+
+DATA: RTAB         TYPE STANDARD TABLE OF DDSHRETVAL WITH HEADER LINE,
+      PBUKRS       TYPE BUKRS,
+      PLIFNR       TYPE LIFNR,
+      CBUKRS       TYPE BUKRS,
+      CLIFNR       TYPE LIFNR.
+******************************************************************
+
+START-OF-SELECTION.
+
+ CLEAR DYN_TAB2-FIELDVALUE.
+
+ DYN_TAB2-FIELDNAME = 'YCL_CH14_VENDOR_PD_STRU-EBELN'.
+ APPEND DYN_TAB2.
+
+ DYN_TAB2-FIELDNAME = 'YCL_CH14_VENDOR_PD_STRU-BEDAT'.
+ APPEND DYN_TAB2.
+
+ DYN_TAB2-FIELDNAME = 'YCL_CH14_VENDOR_PD_STRU-WAERS'.
+ APPEND DYN_TAB2.
+
+ CALL SCREEN 200.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0200 OUTPUT.
+
+ SET PF-STATUS 'STAT1'.
+
+ENDMODULE.                 " STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0200 INPUT.
+IF OK_CODE = 'EXIT'.
+ LEAVE PROGRAM.
+ENDIF.
+ENDMODULE.                 " USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  POV_LIFNR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE POV_LIFNR INPUT.
+
+ CALL FUNCTION 'F4IF_FIELD_VALUE_REQUEST'
+   EXPORTING
+     TABNAME = 'YCL_CH14_VENDOR_PD_STRU'
+     FIELDNAME = 'LIFNR'
+     DYNPPROG = 'YCL_CH14_02_DEMO_SH_IMPORT'
+     DYNPNR = '0200'
+     DYNPROFIELD = 'LIFNR'
+   TABLES
+     RETURN_TAB = RTAB.
+
+ REFRESH DYN_TAB1.
+
+ IF LINES( RTAB ) > 0.
+
+  READ TABLE RTAB WITH KEY FIELDNAME = 'BUKRS'.
+  CBUKRS = RTAB-FIELDVAL.
+
+  READ TABLE RTAB WITH KEY FIELDNAME = 'LIFNR'.
+  CLIFNR = RTAB-FIELDVAL.
+
+  LOOP AT RTAB.
+
+   CONCATENATE 'YCL_CH14_VENDOR_PD_STRU-' RTAB-FIELDNAME
+    INTO DYN_TAB1-FIELDNAME.
+   DYN_TAB1-FIELDVALUE = RTAB-FIELDVAL.
+   APPEND DYN_TAB1.
+
+  ENDLOOP.
+
+  IF CBUKRS <> PBUKRS OR CLIFNR <> PLIFNR.
+   APPEND LINES OF DYN_TAB2[] TO DYN_TAB1.
+  ENDIF.
+
+  CALL FUNCTION 'DYNP_VALUES_UPDATE'
+   EXPORTING
+     DYNAME                     = 'YCL_CH14_02_DEMO_SH_IMPORT'
+     DYNUMB                     = '0200'
+   TABLES
+     DYNPFIELDS                 = DYN_TAB1[]
+           .
+
+  PBUKRS = CBUKRS .
+  PLIFNR = CLIFNR.
+ ENDIF.
+
+ENDMODULE.                 " POV_LIFNR  INPUT

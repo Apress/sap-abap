@@ -1,0 +1,29 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN11
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN11.
+
+********************
+* Selection Texts **
+********************
+
+PARAMETERS: CUST_CD1 TYPE KNA1-KUNNR. " name of variable will appear
+                                      " as label by default
+SELECTION-SCREEN SKIP 2.
+
+SELECTION-SCREEN BEGIN OF LINE.
+
+PARAMETERS: CUST_CD2 TYPE KNA1-KUNNR. " blank label by default
+
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN SKIP 2.
+
+PARAMETERS: CUST_CD3 TYPE KNA1-KUNNR. " label from selection text
+                                      " selection text from data element
+                                      " label

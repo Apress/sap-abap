@@ -1,0 +1,376 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH13_03_ANY_TABLE_ALV
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH13_03_ANY_TABLE_ALV NO STANDARD PAGE HEADING.
+
+*************************************************************
+* Output Specific Fields Of A Specific Database Table/View **
+* in ALV (use class CL_GUI_ALV_GRID)                       **
+*************************************************************
+
+***********************************************************************
+* a modification of chapter X program YCL_CH10_ILISTS05.             **
+*                                                                    **
+* - the process of LINE-SIZE evaluation is omitted.                  **
+* - the event TOP_OF_PAGE DURING LINE-SELECTION is omitted.          **
+* - the process of retrieving & outputting: SELECT..WRITE..ENDSELECT **
+*   in the event AT USER-COMMAND is omitted.                         **
+*                                                                    **
+* other additions, modifications listed as under:                    **
+*                                                                    **
+* I. declarations:                                                   **
+*                                                                    **
+*    - internal table for field catalogue.                           **
+*    - reference variable for instance of custom container.          **
+*    - reference variable for instance of ALV grid                   **
+*    - OK_CODE.                                                      **
+*    - a variable to randomly retrieve a row thru row  no.           **
+*    - field symbol to address dynamically created internal table    **
+*                                                                    **
+* II. AT USER-COMMAND                                                **
+*                                                                    **
+*     switch from list to screen mode: LEAVE TO SCREEN 100.          **
+*                                                                    **
+* III. PBO module                                                    **
+*                                                                    **
+*     - create dynamic internal table.                               **
+*     - load data into dynamically created internal table.           **
+*     - invoke the function module LVC_FIELDCATALOG_MERGE to generate**
+*       a field catalogue with all the fields of inputted database   **
+*       table/view. (default field catalogue)                        **
+*     - mark rows of unselected fields in the field catalogue        **
+*       internal table.                                              **
+*     - delete marked rows in the field catalogue internal table.    **
+*     - set pf status & title.                                       **
+*     - create instances of custom container & ALV grid.             **
+*     - call method SET_TABLE_FOR_FIRST_DISPLAY.                     **
+*                                                                    **
+* in the PAI, we need to go back the field list of WRITE output      **
+* destructor methods on instances of custom container & ALV grid     **
+* LEAVE TO LIST-PROCESSING will get us back to the WRITE output mode **
+*                                                                    **
+***********************************************************************
+
+DATA: BEGIN OF FIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME," field name
+       POSITION  TYPE DD03L-POSITION, " field position in stru 1, 2..
+                                      " line no. & field position map
+                                      " one-to-one. helps in accessing
+                                      " a field with line no.
+       INTTYPE   TYPE DD03L-INTTYPE,  " ABAP TYPE: C,D,F,I,N,P etc.
+       DATATYPE  TYPE DD03L-DATATYPE, " DDIC TYPE: CHAR, NUMC etc.
+       KEYFLAG   TYPE DD03L-KEYFLAG,  " flag for primary key field
+       CBOX(1)   TYPE C,              " field enabled/disabled check box
+      END OF FIELDS_STRU,
+
+      BEGIN OF SFIELDS_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF SFIELDS_STRU,
+
+      BEGIN OF ORDERBY_STRU,
+       FIELDNAME TYPE DD03L-FIELDNAME,
+      END OF ORDERBY_STRU,
+
+      FIELDS_TAB  LIKE STANDARD TABLE OF FIELDS_STRU, " all fields of
+                                                      " selected table
+
+      SFIELDS_TAB LIKE STANDARD TABLE OF SFIELDS_STRU," selected fields of
+                                                      " selected table. used
+                                                      " in SELECT statement
+
+      ORDERBY_TAB LIKE STANDARD TABLE OF ORDERBY_STRU,  " primary key fields
+                                                        " (in sort)
+      CONDS_TAB   TYPE STRING OCCURS 0 WITH HEADER LINE, " condition for
+                                                         " text tables
+      TABCLASS    TYPE DD02L-TABCLASS, " destination field from table DD02L
+      CK_BOX(1)   TYPE C, " READ..FIELDS_STRU-CBOX INTO..
+
+****** extra code *****
+
+      FCAT     TYPE LVC_T_FCAT WITH HEADER LINE, " internal table-field ctlg.
+      ITAB     TYPE REF TO DATA,                 " reference variable-itab
+      CONT     TYPE REF TO Cl_GUI_CUSTOM_CONTAINER,
+                                                 " reference variable-c cont.
+      ALV_GRID TYPE REF TO Cl_GUI_ALV_GRID,      " reference variable-ALV grid
+      OK_CODE  TYPE SY-UCOMM, " OK CODE
+      INDX     TYPE I.        " to access internal table row
+
+FIELD-SYMBOLS: <DSTRU>, " field symbol to access structure
+               <FLD>,   " field symbol to access field
+
+               <iTAB> TYPE ANY TABLE.  " field symbol to access itab
+
+***********SELECTION-SCREEN***************************
+
+PARAMETERS: TAB_NAME  TYPE DD03L-TABNAME VALUE CHECK.
+
+AT SELECTION-SCREEN.
+
+SELECT SINGLE TABCLASS FROM DD02L INTO TABCLASS WHERE TABNAME = TAB_NAME.
+
+IF TABCLASS <> 'TRANSP' AND TABCLASS <> 'CLUSTER' AND
+  TABCLASS <> 'POOL' AND TABCLASS <> 'VIEW'.
+ MESSAGE E022(YCL_CH07_MCLASS01) WITH TAB_NAME.
+ENDIF.
+
+***********************************************************
+***********************************************************
+
+START-OF-SELECTION.
+
+SELECT FIELDNAME POSITION INTTYPE DATATYPE KEYFLAG FROM DD03L
+ INTO CORRESPONDING FIELDS OF TABLE FIELDS_TAB
+ WHERE TABNAME = TAB_NAME AND FIELDNAME NOT LIKE '.%'.
+
+SORT FIELDS_TAB BY POSITION.
+
+PERFORM LISTER.
+
+**************************
+* AT USER-COMMAND event **
+**************************
+
+AT USER-COMMAND.
+
+CASE SY-UCOMM.
+
+ WHEN 'EXIT'.
+ SET SCREEN 0.
+ LEAVE SCREEN.
+
+ WHEN 'BACK'.
+  SY-LSIND = SY-LSIND - 2.
+
+*****************select all**************
+ WHEN 'SALL'.
+
+ LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+  MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM 'X'
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+****************de-select all*************
+ WHEN 'DSALL'.
+
+  LOOP AT FIELDS_TAB INTO FIELDS_STRU .
+   MODIFY LINE SY-TABIX FIELD VALUE FIELDS_STRU-CBOX FROM ' '
+    FIELDS_STRU-FIELDNAME FROM FIELDS_STRU-FIELDNAME.
+ ENDLOOP.
+
+ SY-LSIND = 0.
+
+********************output***************
+ WHEN 'DDATA'.
+ REFRESH: SFIELDS_TAB, ORDERBY_TAB, CONDS_TAB. " OHEAD_TAB
+                " initialize internal tables
+******determine selected fields, build internal tables******
+ DO.
+  READ LINE SY-INDEX FIELD VALUE FIELDS_STRU-CBOX INTO CK_BOX.
+  IF SY-SUBRC <> 0. " no more lines in the list
+   EXIT.
+  ENDIF.
+  IF CK_BOX = 'X'.
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   SFIELDS_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+   APPEND SFIELDS_STRU TO SFIELDS_TAB.
+
+
+   ASSIGN COMPONENT SY-INDEX OF STRUCTURE <DSTRU> TO <FLD>.
+
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+   IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ELSE.
+
+   READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX SY-INDEX.
+   FIELDS_STRU-CBOX = CK_BOX.
+   MODIFY FIELDS_TAB FROM FIELDS_STRU INDEX SY-INDEX.
+
+   IF FIELDS_STRU-KEYFLAG = 'X'.
+    ORDERBY_STRU-FIELDNAME = FIELDS_STRU-FIELDNAME.
+    APPEND ORDERBY_STRU TO ORDERBY_TAB.
+   ENDIF.
+
+  IF FIELDS_STRU-DATATYPE = 'LANG' AND FIELDS_STRU-KEYFLAG = 'X'.
+    CONCATENATE FIELDS_STRU-FIELDNAME '= SY-LANGU' INTO
+     CONDS_TAB SEPARATED BY ' '.
+    APPEND CONDS_TAB TO CONDS_TAB.
+   ENDIF.
+
+  ENDIF.
+ ENDDO.
+
+
+ DESCRIBE TABLE SFIELDS_TAB.
+
+ IF SY-TFILL = 0. " no fields selected
+  MESSAGE S023(YCL_CH07_MCLASS01) WITH
+  TAB_NAME DISPLAY LIKE 'W'.
+  SY-LSIND = SY-LSIND - 1.
+  EXIT.
+ ENDIF.
+
+***** switch from list to screen mode, load screen 100 *****
+ LEAVE TO SCREEN 100.
+
+ENDCASE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+
+***** retrieve data & load internal table *****
+
+ CREATE DATA ITAB TYPE STANDARD TABLE OF (TAB_NAME).
+ ASSIGN ITAB->* TO <ITAB>.
+
+ SELECT (SFIELDS_TAB) FROM (TAB_NAME) INTO CORRESPONDING FIELDS OF
+  TABLE <ITAB> WHERE (CONDS_TAB) ORDER BY (ORDERBY_TAB).
+
+***** create default field catalogue *****
+
+ CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+  EXPORTING
+    I_STRUCTURE_NAME             = TAB_NAME
+   CHANGING
+     CT_FIELDCAT                 = FCAT[]
+  EXCEPTIONS
+    INCONSISTENT_INTERFACE       = 1
+    PROGRAM_ERROR                = 2
+    OTHERS                       = 3
+           .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+***** mark rows of unselected fields *****
+
+ LOOP AT FCAT INTO FCAT.
+  INDX = SY-TABIX.
+  READ TABLE FIELDS_TAB INTO FIELDS_STRU INDEX INDX.
+  IF FIELDS_STRU-CBOX = 'X'.
+   FCAT-COL_OPT = 'X'.
+   FCAT-TECH = ' '.
+   MODIFY FCAT.
+   CONTINUE.
+  ENDIF.
+  FCAT-FIELDNAME = ' '.
+  MODIFY FCAT.
+ ENDLOOP.
+
+ DELETE FCAT WHERE FIELDNAME = ' '. " delete rows of unselected fields
+
+***** set pf status, title *****
+
+ SET PF-STATUS 'STAT_SCR'.
+ SET TITLEBAR 'TITLE02' WITH TAB_NAME.
+
+***** create instances of custom container, ALV grid *****
+
+ CREATE OBJECT CONT
+   EXPORTING
+     CONTAINER_NAME               = 'CUST_CONTT'
+   EXCEPTIONS
+     CNTL_ERROR                  = 1
+     CNTL_SYSTEM_ERROR           = 2
+     CREATE_ERROR                = 3
+     LIFETIME_ERROR              = 4
+     LIFETIME_DYNPRO_DYNPRO_LINK = 5
+     others                      = 6
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+ CREATE OBJECT ALV_GRID
+   EXPORTING
+     I_PARENT          = CONT
+   EXCEPTIONS
+     ERROR_CNTL_CREATE = 1
+     ERROR_CNTL_INIT   = 2
+     ERROR_CNTL_LINK   = 3
+     ERROR_DP_CREATE   = 4
+     others            = 5
+     .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+***** call method SET_TABLE_FOR_FIRST_DISPLAY *****
+
+ CALL METHOD ALV_GRID->SET_TABLE_FOR_FIRST_DISPLAY
+   CHANGING
+      IT_OUTTAB                     = <ITAB>
+      IT_FIELDCATALOG               = FCAT[]
+   EXCEPTIONS
+     INVALID_PARAMETER_COMBINATION = 1
+     PROGRAM_ERROR                 = 2
+     TOO_MANY_LINES                = 3
+     others                        = 4
+         .
+ IF SY-SUBRC <> 0.
+  MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+             WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ ENDIF.
+
+OK_CODE = ' '.
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+
+ IF OK_CODE = 'BACK'.  " check ok code
+
+  CALL METHOD ALV_GRID->FREE. " destructor method
+  CALL METHOD CONT->FREE.     " destructor method
+
+***** release ram - ref variables & internal tables used in PBO *****
+
+  FREE CONT.
+  FREE ALV_GRID.
+  FREE FCAT.
+  FREE ITAB.
+
+  PERFORM LISTER.
+  LEAVE TO LIST-PROCESSING. " get back to WRITE output mode
+
+ ENDIF.
+ ENDMODULE.                 " USER_COMMAND_0100  INPUT
+*********************************************************
+FORM LISTER.
+SET PF-STATUS 'STAT1'.
+SET TITLEBAR 'TITLE01' WITH TAB_NAME.
+
+*********primary list - list of fields *********************
+SY-LSIND = 0.
+LOOP AT FIELDS_TAB INTO FIELDS_STRU.
+ WRITE:/5 FIELDS_STRU-CBOX AS CHECKBOX, FIELDS_STRU-FIELDNAME.
+ENDLOOP.
+
+ENDFORM.

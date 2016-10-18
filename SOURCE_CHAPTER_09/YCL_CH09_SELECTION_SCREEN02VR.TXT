@@ -1,0 +1,41 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN02VR
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN02VR.
+
+***************************************************
+* Demo INITIALIZATION event, LOOP AT SCREEN Etc. **
+* to change screen element properties            **
+***************************************************
+
+SELECTION-SCREEN SKIP 5.
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT 1(12) COMMENT1. "label
+PARAMETERS: PASS_WRD(10) TYPE C. " input field
+SELECTION-SCREEN END OF LINE.
+
+**********************************************
+INITIALIZATION.
+COMMENT1 = 'Pass word:'(001). " this notation means use text symbol
+                              " TEXT-001 if it exists. if it does not
+                              " exist, use the literal text
+**********************************************
+
+AT SELECTION-SCREEN OUTPUT. " properies being changed in 
+                            " event AT SELECTION-SCREEN OUTPUT
+
+LOOP AT SCREEN.
+
+ IF SCREEN-NAME = 'PASS_WRD'. " there are two screen elements
+                              " COMMENT1 & PASS_WRD. you are interested
+                              " to change properies of PASS_WRD only
+  SCREEN-INVISIBLE = '1'.
+  MODIFY SCREEN.
+ ENDIF.
+
+ENDLOOP.

@@ -1,0 +1,150 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH06_ITAB02
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH06_ITAB02 LINE-SIZE 105 LINE-COUNT 60
+       NO STANDARD PAGE HEADING.
+
+************************************************************************
+* Customer Wise List of Billing Documents of a Specified Company Code **
+************************************************************************
+*******************************************************************
+* declare internal table in 3.X mode:                            **
+*                  <itab> TYPE <database view name> OCCURS <n>.  **
+*                                                                **
+* declare structure <structure name> TYPE <database view name>.  **
+*                                                                **
+* PARAMETERS CCODE TYPE VBRK-BUKRS VALUE CHECK DEFAULT 3000      **
+* to select company code                                         **
+*                                                                **
+* get BUTXT WAERS from T001 - SELECT SINGLE etc.                 **
+*                                                                **
+* load the internal table from the view YCL_CH05_VBRKKNA         **
+* with SELECT * from YCL_CH05_VBRKKNA INTO TABLE <itab>          **
+*       WHERE BUKRS = CCODE.                                     **
+*                                                                **
+* SORT <itab> BY KUNNR ASCENDING                                 **
+*                                                                **
+* set LOOP AT <itab> into <structure name>.                      **
+*                                                                **
+*       check for customer change. if change output totals for   **
+*        previous customer, output current customer info         **
+*                                                                **
+*       calculate amount in operating currency of chosen CCODE   **
+*                                                                **
+*       WRITE...                                                 **
+*                                                                **
+*       build customer totals, grand totals                      **
+*                                                                **
+*      ENDLOOP.                                                  **
+*                                                                **
+*  output customer total, grand total                            **
+*                                                                **
+*******************************************************************
+TABLES: T001.
+
+DATA: BILL_DOCS_TAB  TYPE YCL_CH05_VBRKKNA OCCURS 5, " reference to view
+      BILL_DOCS_STRU TYPE YCL_CH05_VBRKKNA, " reference to view
+      CNT            TYPE I, "count of billing docs of a customer
+      PREV_KUNNR     TYPE KNA1-KUNNR, " previous KUNNR
+      CTOTAL         TYPE VBRK-NETWR, " customer net value total
+      CTAX_TOTAL     TYPE VBRK-MWSBK, " customer tax total
+      GTOTAL         TYPE VBRK-NETWR, " grand net value total
+      GTAX_TOTAL     TYPE VBRK-MWSBK. " grand tax total
+
+PARAMETERS CCODE  TYPE VBRK-BUKRS DEFAULT 3000 VALUE CHECK.
+********************************************************************
+TOP-OF-PAGE.
+
+WRITE :/5  TEXT-001, CCODE NO-GAP, '/' NO-GAP, T001-BUTXT,
+        93  TEXT-003, 98(3) SY-PAGNO.
+WRITE :/33 TEXT-002, T001-WAERS.
+SKIP 1.
+WRITE:/5(96) SY-ULINE.
+
+WRITE:/5 TEXT-004,11 TEXT-005, 22 TEXT-006, 33 TEXT-007,
+         79 TEXT-008, 91 TEXT-009.
+WRITE:/6 TEXT-010, 34 TEXT-011.
+
+WRITE:/5(96) SY-ULINE.
+
+********************************************************************
+START-OF-SELECTION.
+
+SELECT SINGLE * FROM T001 WHERE BUKRS = CCODE." fetches a single row, no
+                                              " loop construct SELECT
+                                              " ENDSELECT
+
+SELECT * FROM
+  YCL_CH05_VBRKKNA INTO  " dumps filtered full data from
+  TABLE BILL_DOCS_TAB    " view into the internal table
+  WHERE BUKRS = CCODE.
+
+SORT BILL_DOCS_TAB BY KUNNR ASCENDING. " SORT table on the field KUNNR
+                                       " in ASCENDING order
+********************************************************************
+LOOP AT BILL_DOCS_TAB INTO BILL_DOCS_STRU.
+
+ IF BILL_DOCS_STRU-KUNNR <> PREV_KUNNR .
+
+  IF CNT > 1 AND SY-TABIX > 1.
+
+   FORMAT INVERSE COLOR COL_GROUP. " customer total-different color
+   WRITE: /(17) CTOTAL UNDER BILL_DOCS_STRU-NETWR,
+          (15) CTAX_TOTAL UNDER BILL_DOCS_STRU-MWSBK.
+   FORMAT RESET. " restore default colors
+  ENDIF.
+
+  IF SY-TABIX > 1.
+   SKIP.
+   CTOTAL = 0.
+   CTAX_TOTAL = 0.
+   CNT = 0.
+  ENDIF.
+
+  FORMAT INVERSE COLOR COL_POSITIVE. "customer info-different color
+  WRITE:/5 TEXT-011, BILL_DOCS_STRU-KUNNR USING NO EDIT MASK,
+           BILL_DOCS_STRU-NAME1.
+  FORMAT RESET. " restore default colors
+
+ ENDIF.
+
+ BILL_DOCS_STRU-NETWR = BILL_DOCS_STRU-NETWR * BILL_DOCS_STRU-KURRF.
+ BILL_DOCS_STRU-MWSBK = BILL_DOCS_STRU-MWSBK * BILL_DOCS_STRU-KURRF.
+
+ CNT = CNT + 1.
+ WRITE:/5(5) CNT, BILL_DOCS_STRU-VBELN, BILL_DOCS_STRU-FKDAT,
+             BILL_DOCS_STRU-BSTNK_VF, (17) BILL_DOCS_STRU-NETWR,
+             (15) BILL_DOCS_STRU-MWSBK.
+
+ GTOTAL = GTOTAL + BILL_DOCS_STRU-NETWR.
+ CTOTAL = CTOTAL + BILL_DOCS_STRU-NETWR.
+
+ GTAX_TOTAL = GTAX_TOTAL + BILL_DOCS_STRU-MWSBK.
+ CTAX_TOTAL = CTAX_TOTAL + BILL_DOCS_STRU-MWSBK.
+
+ PREV_KUNNR = BILL_DOCS_STRU-KUNNR.
+
+ENDLOOP.
+********************************
+
+END-OF-SELECTION.
+
+IF CNT > 1.
+
+ FORMAT INVERSE COLOR COL_GROUP. " customer total-different color
+ WRITE: /(17) CTOTAL UNDER BILL_DOCS_STRU-NETWR,
+         (15) CTAX_TOTAL UNDER BILL_DOCS_STRU-MWSBK.
+
+ENDIF.
+
+SKIP 1.
+
+FORMAT INVERSE COLOR COL_TOTAL. " grand total-different color
+
+WRITE: /(17) GTOTAL UNDER BILL_DOCS_STRU-NETWR,
+        (15) GTAX_TOTAL UNDER BILL_DOCS_STRU-MWSBK.

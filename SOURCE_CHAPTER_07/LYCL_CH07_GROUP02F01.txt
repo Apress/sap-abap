@@ -1,0 +1,15 @@
+*&---------------------------------------------------------------------*
+*&  Include           LYCL_CH07_GROUP02F01
+*&---------------------------------------------------------------------*
+
+FORM WRITE1 USING STR1 STR2.
+ MOVE STR1+7(2) TO STR2+6(2).
+ MOVE ',' TO STR2+8(1).
+
+ENDFORM.
+
+FORM WRITE2 USING STR1 STR2.
+ MOVE STR1+5(2) TO STR2+3(2).
+ MOVE ',' TO STR2+5(1).
+
+ENDFORM.

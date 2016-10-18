@@ -1,0 +1,103 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH14_03_SIMULATE_TABSTRIP
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH14_03_SIMULATE_TABSTRIP.
+
+*******************************************************
+* Simulate Tab Strip - Sub Screen Area & Sub Screens **
+*******************************************************
+
+TABLES: YCL_CH14_CUST_VW, T005T.
+
+DATA: OK_CODE     TYPE SY-UCOMM,
+      MAIN_TAB    TYPE STANDARD TABLE OF YCL_CH14_CUST_VW,
+      T005T_TAB   TYPE SORTED TABLE OF T005T WITH
+                        UNIQUE KEY SPRAS LAND1,
+      ONCE(1)     TYPE C,
+      CURRENT_RW  TYPE SY-TABIX,
+      NO_OF_ROWS  TYPE SY-TABIX,
+      PROG        TYPE SY-REPID VALUE 'YCL_CH14_03_SIMULATE_TABSTRIP',
+      SCRN        TYPE SY-DYNNR VALUE '0200'.
+
+*****************************************************************
+START-OF-SELECTION.
+
+SELECT * FROM YCL_CH14_CUST_VW INTO TABLE MAIN_TAB.
+NO_OF_ROWS = SY-DBCNT.
+
+SORT MAIN_TAB BY KUNNR.
+
+SELECT * FROM T005T INTO TABLE T005T_TAB.
+
+CALL SCREEN 100.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+
+IF ONCE = ' '.
+ ONCE = 'X'.
+ SET PF-STATUS 'STAT1'.
+ CURRENT_RW = 1.
+ PERFORM READ_TABLE.
+
+ENDIF.
+
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+
+CASE OK_CODE.
+
+ WHEN 'EXIT'.
+  LEAVE PROGRAM.
+
+ WHEN 'FIRST'.
+  CURRENT_RW = 1.
+  PERFORM READ_TABLE.
+
+ WHEN 'NEXT'.
+  IF CURRENT_RW < NO_OF_ROWS.
+   CURRENT_RW = CURRENT_RW + 1.
+   PERFORM READ_TABLE.
+  ENDIF.
+
+ WHEN 'PREVIOUS'.
+  IF CURRENT_RW > 1.
+   CURRENT_RW = CURRENT_RW - 1.
+   PERFORM READ_TABLE.
+  ENDIF.
+
+ WHEN 'LAST'.
+   CURRENT_RW = NO_OF_ROWS.
+   PERFORM READ_TABLE.
+
+ WHEN 'CONTACT'.
+  SCRN = '0200'.
+
+ WHEN 'ORGANZ'.
+  SCRN = '0300'.
+
+ENDCASE.
+
+ENDMODULE.                 " USER_COMMAND_0100  INPUT
+
+********************************************************
+FORM READ_TABLE.
+
+  READ TABLE MAIN_TAB INTO YCL_CH14_CUST_VW INDEX CURRENT_RW.
+  READ TABLE T005T_TAB INTO T005T WITH KEY
+     SPRAS = YCL_CH14_CUST_VW-SPRAS2 LAND1 = YCL_CH14_CUST_VW-LAND1.
+
+ENDFORM.

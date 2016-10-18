@@ -1,0 +1,83 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH09_SELECTION_SCREEN03
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH09_SELECTION_SCREEN03.
+
+*********************************************************
+* Demo AT SELECTION-SCREEN OUTPUT To Change Properties **
+* Of Screen Elements                                   **
+*********************************************************
+
+
+SELECTION-SCREEN SKIP 2.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME TITLE
+ TEXT-001 NO INTERVALS.
+
+SELECTION-SCREEN BEGIN OF LINE.
+
+ PARAMETERS CASH_RB RADIOBUTTON GROUP MOP DEFAULT 'X'
+  USER-COMMAND RBCLICK.
+
+ SELECTION-SCREEN COMMENT 3(20) TEXT-002.
+
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+
+ PARAMETERS CHEQ_RB RADIOBUTTON GROUP MOP.
+ SELECTION-SCREEN COMMENT 3(15) TEXT-003.
+ SELECTION-SCREEN COMMENT 20(15) TEXT-004.
+ PARAMETERS CHQNO(12) TYPE C.
+
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN BEGIN OF LINE.
+
+ PARAMETERS CCRD RADIOBUTTON GROUP MOP.
+ SELECTION-SCREEN COMMENT 3(15) TEXT-005.
+ SELECTION-SCREEN COMMENT 20(15) TEXT-006.
+ PARAMETERS CCRDNO(16) TYPE C.
+
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK BLK1.
+******************************************************
+
+AT SELECTION-SCREEN OUTPUT.
+
+LOOP AT SCREEN.
+
+ IF SCREEN-NAME <> 'CHQNO' AND SCREEN-NAME <> 'CCRDNO'.
+  CONTINUE.   " changing properties of only 'CHQNO' & 'CCRDNO'
+ ENDIF.
+
+ IF CASH_RB = 'X' .
+   SCREEN-INPUT = 0.
+   MOVE ' ' TO CCRDNO.
+   MOVE ' ' TO CHQNO.
+
+ ELSEIF SCREEN-NAME = 'CHQNO' AND CHEQ_RB = 'X'.
+   SCREEN-INPUT = 1.
+   MOVE ' ' TO CCRDNO.
+
+ ELSEIF  SCREEN-NAME = 'CHQNO' AND CHEQ_RB = ' '.
+   SCREEN-INPUT = 0.
+
+ ELSEIF SCREEN-NAME = 'CCRDNO' AND CCRD = 'X'.
+   SCREEN-INPUT = 1.
+   MOVE ' ' TO CHQNO.
+
+ ELSEIF SCREEN-NAME = 'CCRDNO' AND CCRD = ' '.
+   SCREEN-INPUT = 0.
+
+ ENDIF.
+
+ MODIFY SCREEN.
+
+ENDLOOP.

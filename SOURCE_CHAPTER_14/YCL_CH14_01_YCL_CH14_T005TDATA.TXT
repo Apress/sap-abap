@@ -1,0 +1,305 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH14_01_YCL_CH14_T005TDATA
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH14_01_YCL_CH14_T005TDATA.
+
+**************************************
+* Country Texts Custom Table - Data **
+**************************************
+
+TABLES: YCL_CH14_T005T.
+
+DATA:   OK_CODE         TYPE SY-UCOMM,
+        SAVE_OK_CODE    TYPE SY-UCOMM, " save OK_CODE to process in
+                                       " screen 550
+        STRNG           TYPE STRING,
+        ANSWER(1)       TYPE C,    " delete confirmation: 1 yes 2 no
+
+        EXCLUD_FC_TAB   TYPE STANDARD TABLE OF SY-UCOMM " exclude
+                           WITH HEADER LINE,            " buttons table
+
+        DATA_CHG_550(1) TYPE C. " data changed indicator
+
+*********************************
+START-OF-SELECTION.
+
+CALL SCREEN 500.
+
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0500  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PBO screen 500 *****
+
+MODULE STATUS_0500 OUTPUT.
+ SET PF-STATUS 'STAT1'.
+ SET TITLEBAR 'TITLE01'.
+ OK_CODE = ' '.
+ENDMODULE.                 " STATUS_0500  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  VALIDATE_INPUT_500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PAI fields validation screen 500 *****
+
+MODULE VALIDATE_INPUT_500 INPUT.
+
+ SELECT SINGLE * FROM YCL_CH14_T005T WHERE
+  SPRAS = YCL_CH14_T005T-SPRAS AND
+  LAND1 = YCL_CH14_T005T-LAND1.
+
+IF OK_CODE = 'CREATE' AND SY-SUBRC = 0.
+
+ MESSAGE E041(YCL_CH07_MCLASS01) WITH
+  YCL_CH14_T005T-SPRAS YCL_CH14_T005T-LAND1.
+ " Language Code:&1 Country Code &2 Already Exists
+
+ELSEIF OK_CODE <> 'CREATE' AND SY-SUBRC <> 0.
+
+MESSAGE E042(YCL_CH07_MCLASS01) WITH
+  YCL_CH14_T005T-SPRAS YCL_CH14_T005T-LAND1.
+ " Language Code:&1 Country Code &2 Do Not Exist
+
+ENDIF.
+
+
+ENDMODULE.                 " VALIDATE_INPUT_500  INPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  OVER_AND_OUT_500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PAI ON-EXIT screen 500 *****
+
+MODULE OVER_AND_OUT_500 INPUT.
+
+IF OK_CODE = 'EXIT'.
+ LEAVE PROGRAM.
+ENDIF.
+
+ENDMODULE.                 " OVER_AND_OUT_500  INPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  MAIN_PAI_500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PAI (main) screen 500 *****
+
+MODULE MAIN_PAI_500 INPUT.
+
+SAVE_OK_CODE = OK_CODE. " save OK_CODE for processing in screen 550
+
+REFRESH EXCLUD_FC_TAB.  " initialize internal table for exclude buttons
+
+DATA_CHG_550 = ' '.     " initialize indicator for changed data on screen 550
+
+***************************
+CASE OK_CODE.
+
+ WHEN 'DISPLAY'.
+ EXCLUD_FC_TAB = 'SAVE'. " exclude save button when display
+ APPEND EXCLUD_FC_TAB.
+ STRNG = 'Display'(002).
+ LEAVE TO SCREEN 550.
+
+**************************
+ WHEN 'CHANGE'.
+ STRNG = 'Change'(003).
+ LEAVE TO SCREEN 550.
+
+**************************
+ WHEN 'CREATE'.
+ CLEAR YCL_CH14_T005T-LANDX. " initialize five fields when create
+ CLEAR YCL_CH14_T005T-NATIO.
+ CLEAR YCL_CH14_T005T-LANDX50.
+ CLEAR YCL_CH14_T005T-NATIO50.
+ CLEAR YCL_CH14_T005T-PRQ_SPREGT.
+ STRNG = 'Create'(004).
+ LEAVE TO SCREEN 550.
+
+**************************
+ WHEN 'DELETE'.
+  PERFORM DELETE_SR USING ANSWER YCL_CH14_T005T. " delete confirmation
+
+  IF ANSWER = 1.
+   DELETE YCL_CH14_T005T.
+   MESSAGE S044(YCL_CH07_MCLASS01) WITH
+     YCL_CH14_T005T-SPRAS YCL_CH14_T005T-LAND1
+      DISPLAY LIKE 'W'.
+   " Language Code:&1 Country Code &2 Deleted!
+  ELSE.
+
+  MESSAGE S045(YCL_CH07_MCLASS01).
+   " Deletion Aborted
+
+  ENDIF.
+
+**************************
+ENDCASE.
+
+ENDMODULE.                 " MAIN_PAI_500  INPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0550  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PBO screen 550 *****
+
+MODULE STATUS_0550 OUTPUT.
+
+ SET PF-STATUS 'STAT2' EXCLUDING EXCLUD_FC_TAB[].
+ SET TITLEBAR 'TITLE02' WITH 'Table YCL_CH14_T005T'(001) STRNG.
+ PERFORM CHANGE_SCR_550_PROP. " adjust screen properties
+
+ENDMODULE.                 " STATUS_0550  OUTPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0550  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PAI screen 550 *****
+
+MODULE USER_COMMAND_0550 INPUT.
+
+CASE OK_CODE.
+
+ WHEN 'BACK'.
+ IF DATA_CHG_550 = 'X'.
+  PERFORM ABORT_SR USING ANSWER YCL_CH14_T005T. " save data pop-up
+  IF ANSWER = 1.
+   LEAVE TO SCREEN 500.
+  ENDIF.
+ ELSE.
+  LEAVE TO SCREEN 500.
+ ENDIF.
+
+WHEN 'SAVE'.
+ MODIFY YCL_CH14_T005T.
+ DATA_CHG_550 = ' '.
+ MESSAGE S043(YCL_CH07_MCLASS01) WITH
+   YCL_CH14_T005T-SPRAS YCL_CH14_T005T-LAND1.
+ " Language Code:&1 Country Code &2 Saved!
+
+ENDCASE.
+
+ENDMODULE.                 " USER_COMMAND_0550  INPUT
+
+*&---------------------------------------------------------------------*
+*&      Module  SET_CHANGE_550  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+
+***** PAI (change in data) screen 550 *****
+
+MODULE SET_CHANGE_550 INPUT.
+
+ DATA_CHG_550 = 'X'.
+
+ENDMODULE.                 " SET_CHANGE_550  INPUT
+
+**************************************************************
+***** sub routine to change screen 550 properties  *****
+
+FORM CHANGE_SCR_550_PROP.
+
+LOOP AT SCREEN.
+ CASE SAVE_OK_CODE.
+
+ WHEN 'CHANGE'.
+  IF SCREEN-GROUP1 = 'DIS'.
+   SCREEN-INPUT = 0.
+  ELSE.
+   SCREEN-INPUT = 1.
+  ENDIF.
+
+ WHEN 'DISPLAY'.
+   SCREEN-INPUT = 0.
+
+  WHEN 'CREATE'.
+  IF SCREEN-GROUP1 = 'DIS'.
+   SCREEN-INPUT = 0.
+  ELSE.
+   SCREEN-INPUT = 1.
+  ENDIF.
+
+ ENDCASE.
+ MODIFY SCREEN.
+ENDLOOP.
+
+ENDFORM.
+***********************
+
+***** sub routine - delete confirmation *****
+
+FORM DELETE_SR USING ANSWR STRU TYPE YCL_CH14_T005T.
+
+DATA: TXT     TYPE STRING.
+
+CONCATENATE
+ 'Confirm Deletion of Language Code'(005) STRU-SPRAS
+  'Country Code'(006) STRU-LAND1
+             INTO TXT SEPARATED BY ' '.
+
+CALL FUNCTION 'POPUP_TO_CONFIRM'
+  EXPORTING
+    TITLEBAR                  = 'Confirm Deletion'(008)
+    TEXT_QUESTION             = TXT
+    TEXT_BUTTON_1             = 'Yes, Delete'(009)
+    TEXT_BUTTON_2             = 'No To Delete'(010)
+    DEFAULT_BUTTON            = '2'
+    DISPLAY_CANCEL_BUTTON     = ' '
+    START_COLUMN              = 40
+    START_ROW                 = 2
+ IMPORTING
+    ANSWER                    = ANSWR
+          .
+
+ENDFORM.
+
+******************************************************************
+
+***** sub routine - abort changes in screen 550 confirmation *****
+
+FORM ABORT_SR USING ANSWR STRU TYPE YCL_CH14_T005T.
+
+DATA: TXT     TYPE STRING.
+
+CONCATENATE
+ 'Abort Changes of Language Code'(011) STRU-SPRAS
+ 'Country Code'(006) STRU-LAND1
+             INTO TXT SEPARATED BY ' '.
+
+CALL FUNCTION 'POPUP_TO_CONFIRM'
+  EXPORTING
+    TITLEBAR                  = 'Abort Changes'(012)
+    TEXT_QUESTION             = TXT
+    TEXT_BUTTON_1             = 'Yes, Abort'(013)
+    TEXT_BUTTON_2             = 'Do Not Abort'(014)
+    DEFAULT_BUTTON            = '2'
+    DISPLAY_CANCEL_BUTTON     = ' '
+    START_COLUMN              = 60
+    START_ROW                 = 2
+ IMPORTING
+    ANSWER                    = ANSWR
+          .
+
+ENDFORM.

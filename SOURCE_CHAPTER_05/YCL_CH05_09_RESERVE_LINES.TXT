@@ -1,0 +1,38 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH05_09_RESERVE_LINES
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH05_09_RESERVE_LINES LINE-COUNT 55 LINE-SIZE 50
+       NO STANDARD PAGE HEADING.
+
+***************************************************************
+* Part Of Output Not Splitting Between Pages - RESERVE LINES **
+***************************************************************
+
+TABLES: YCL_CH05_KNAT5T.
+
+TOP-OF-PAGE.
+WRITE:/40 'Page:', (5) SY-PAGNO.
+
+****************************************************************
+START-OF-SELECTION.
+
+SELECT * FROM YCL_CH05_KNAT5T UP TO 1000 ROWS.
+
+ RESERVE 6 LINES. " checks 6 lines are available in the current page
+                  " if 6 lines available, it outputs
+                  " else goes to next page and outputs
+
+ WRITE /5: YCL_CH05_KNAT5T-KUNNR USING NO EDIT MASK,
+           YCL_CH05_KNAT5T-NAME1,
+           YCL_CH05_KNAT5T-STRAS,
+           YCL_CH05_KNAT5T-ORT01,
+           YCL_CH05_KNAT5T-PSTLZ,
+           YCL_CH05_KNAT5T-LANDX.
+ SKIP 1.
+
+ENDSELECT.

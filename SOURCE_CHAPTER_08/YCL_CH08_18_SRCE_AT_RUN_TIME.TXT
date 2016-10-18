@@ -1,0 +1,170 @@
+*&---------------------------------------------------------------------*
+*& Report  CL_CH08_18_SRCE_AT_RUN_TIME
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH08_18_SRCE_AT_RUN_TIME LINE-SIZE 150
+         NO STANDARD PAGE HEADING.
+
+*******************************************************
+* <source> In SELECT At Runtime, Dynamic Data Objects *
+*******************************************************
+
+*************************************************
+* from which database table/view to retrieve   **
+* data is decided at run time.                 **
+*                                              **
+* the runtime database table name is input     **
+* through PARAMETERS statement. (TABLE_NM)     **
+*                                              **
+* when you are retrieving data from a database **
+* table/view into an internal table, the       **
+* internal table must have a structure which   **
+* can accommodate the retrieved fields. (all   **
+* fields of database table/view for now)       **
+*                                              **
+* when you are retrieving data, one row at a   **
+* time from the internal table into a structure**
+* you do not know the structure's attributes   **
+* in terms of fields/components till runtime   **
+*                                              **
+* so you are creating a dynamic structure data **
+* object using the table/view name input.      **
+* the way to create dynamic structure data     **
+* object is:                                   **
+* (a) declare using DATA statement a reference **
+*     variable like:                           **
+*     DATA STRU_REF  TYPE REF TO DATA.         **
+* (b) create dynamic structure data object by  **
+*     referring to the input table/view name   **
+*     like:                                    **
+*     CREATE DATA STRU_REF TYPE (TABLE_NM).    **
+*                                              **
+* this will create a structure data object     **
+* having the same fields as the table/view     **
+* input in TABLE_NM. if for Instance, KNA1     **
+* was input, the CREATE DATA STRU_REF TYPE     **
+* (TABLE_NM). will create a structure data     **
+* object having all the fields of table        **
+* structure KNA1. the reference variable       **
+* STRU_REF will point to the structure data    **
+* object.                                      **
+*                                              **
+* to be able to refer/point to the data        **
+* you need to de-reference the reference       **
+* variable STRU_REF. you are dereferencing and **
+* assigning to a Field Symbol <FS_STRU> like   **
+* ASSIGN STRU_REF->* TO <FS_STRU>.             **
+*                                              **
+* you are creating a dynamic internal table    **
+* data object using the table/view name input. **
+* the way to create dynamic internal table     **
+* data object is:                              **
+* (a) declare using DATA statement a reference **
+*     variable like:                           **
+*     DATA ITAB_REF  TYPE REF TO DATA.         **
+* (b) create dynamic internal table data object**
+*     by referring to the input table/view     **
+*     name like:                               **
+*     CREATE DATA ITAB_REF TYPE STANDARD TABLE **
+*     OF (TABLE_NM).                           **
+*                                              **
+* this will create a internal table data object**
+* having the same fields as the table/view     **
+* input in TABLE_NM. if for instance, KNA1     **
+* was input, the CREATE DATA ITAB_REF TYPE     **
+* STANDARD TABLE OF (TABLE_NM). will create an **
+* internal table data object having all the    **
+* fields of table structure KNA1. the reference**
+* variable ITAB_REF will point to the internal **
+* table data object.                           **
+*                                              **
+* to be able to refer/point to the data in the **
+* internal table, you need to dereference the  **
+* reference variable ITAB_REF. you are         **
+* dereferencing and assigning to a Field Symbol**
+* <FS_ITAB> like:                              **
+* ASSIGN ITAB_REF->* TO <FS_ITAB>.             **
+*                                              **
+* to access the individual fields of structure **
+* you are using the Field Symbol assignment    **
+* statement form:                              **
+*     ASSIGN COMPONENT <component number> OF   **
+*     <structure name> TO <field symbol name>. **
+*                                              **
+* the individual fields accessed in this way   **
+* are output.                                  **
+*                                              **
+* the concept of creating dynamic data objects **
+* is being introduced in a preview manner. it  **
+* is covered with in the regular course in     **
+* chapter 10.                                  **
+*************************************************
+
+*************************************************
+* input the table/view name from which data to **
+* be retrieved                                 **
+*                                              **
+* create a dynamic structure data object of    **
+* type same as the inputted table/view.        **
+* deference and assign to Field Symbol         **
+*                                              **
+* create a dynamic internal table data object  **
+* whose structure type is same as the inputted **
+* table/view.                                  **
+* deference and assign To another Field Symbol **
+*                                              **
+* use the SELECT statement variation with      **
+* runtime <source> to fetch data into dynamic  **
+* internal table data object                   **
+*                                              **
+* set up LOOP...ENDLOOP                        **
+*                                              **
+* assign individual fields of structure data   **
+* object to another Field Symbol & output      **
+*                                              **
+* LOOP...ENDLOOP will run through till all     **
+* rows fetched & outputted                     **
+*************************************************
+
+
+DATA: STRU_REF   TYPE REF TO DATA, " reference variable for structure
+      ITAB_REF   TYPE REF TO DATA. " reference variable for internal table
+
+FIELD-SYMBOLS: <FS_STRU>, " Field Symbol for table/view structure
+               <FS_ITAB> TYPE TABLE, " Field Symbol for internal table
+               <FS_FLD>.  " Field Symbol for individual fields
+
+PARAMETERS TABLE_NM  TYPE DD03L-TABNAME DEFAULT 'T001' VALUE CHECK.
+
+*******************************************************************
+START-OF-SELECTION.
+
+CREATE DATA STRU_REF TYPE (TABLE_NM). " creation of run time structure
+
+ASSIGN STRU_REF->* TO <FS_STRU>. " dereference and assign to Field Symbol
+
+CREATE DATA ITAB_REF TYPE STANDARD TABLE OF (TABLE_NM). " creation of run time internal table
+
+ASSIGN ITAB_REF->* TO <FS_ITAB>. " dereference and assign to Field Symbol
+
+
+SELECT * FROM (TABLE_NM) INTO TABLE <FS_ITAB>. " source at run time
+
+LOOP AT <FS_ITAB> INTO <FS_STRU>.
+ DO 6 TIMES.
+  IF SY-INDEX = 1. " bypass the presumed client code (first) field
+   CONTINUE.
+  ENDIF.
+  ASSIGN COMPONENT SY-INDEX OF STRUCTURE <FS_STRU> TO <FS_FLD>.
+   " Field Symbol <FS_FLD> being assigned & re-assigned
+  IF SY-INDEX = 2.
+   WRITE:/5 <FS_FLD>. " new line for the first outputted field
+  ELSE.
+   WRITE: <FS_FLD>.
+  ENDIF.
+ ENDDO.
+ENDLOOP.

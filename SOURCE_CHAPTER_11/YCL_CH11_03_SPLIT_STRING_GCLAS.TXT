@@ -1,0 +1,72 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_03_SPLIT_STRING_GCLAS
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_03_SPLIT_STRING_GCLAS.
+
+****************************************
+* Call Method SPLIT_STRING In Class:  **
+* YCL_CH11_CL_STRING_OPERATIONS       **
+****************************************
+
+DATA: STRG(30)  TYPE C,
+      STRGA     LIKE STANDARD TABLE OF STRG,
+      ISTR      TYPE STRING,
+      SPELL     TYPE SPELL,
+      SPLIT_REF TYPE REF TO YCL_CH11_CL_STRING_OPERATIONS.
+*****************************************************
+
+PARAMETERS: AMT(7) TYPE P DECIMALS 2 DEFAULT
+    '987654321.50'.
+
+START-OF-SELECTION.
+
+CALL FUNCTION 'SPELL_AMOUNT'
+ EXPORTING
+   AMOUNT          =  AMT
+   CURRENCY        = 'INR'
+   FILLER          = ' '
+   LANGUAGE        = SY-LANGU
+ IMPORTING
+   IN_WORDS        = SPELL
+ EXCEPTIONS
+   NOT_FOUND       = 1
+   TOO_LARGE       = 2
+   OTHERS          = 3
+          .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+         WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ENDIF.
+
+CONCATENATE SPELL-WORD SPELL-DECWORD INTO ISTR
+  SEPARATED BY ' '.
+
+CREATE OBJECT SPLIT_REF.
+
+CALL METHOD SPLIT_REF->SPLIT_STRING
+  EXPORTING
+    STRING_TO_SPLIT                = ISTR
+  IMPORTING
+    STABLE                         = STRGA
+  EXCEPTIONS
+    RETURN_TABLE_ELEMENT_NOT_TYPEC = 1
+    EMPTY_STRING                   = 2
+    others                         = 3
+        .
+IF SY-SUBRC <> 0.
+ MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4
+            DISPLAY LIKE 'E'.
+
+ELSE.
+
+ LOOP AT STRGA INTO STRG.
+  WRITE:/5 STRG.
+ ENDLOOP.
+
+ENDIF.

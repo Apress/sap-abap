@@ -1,0 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Report  YCL_CH11_08_TEST_CBE_ABAP_PG
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+REPORT YCL_CH11_08_TEST_CBE_ABAP_PG.
+
+***************************************************
+* Demo Class Based Exception Outside A Procedure **
+***************************************************
+
+DATA: KEY_KUNNR   TYPE KUNNR,
+      ER_REF      TYPE REF TO YCX_YCL_CH11_EXCEPTIONS1,
+      ETEXT       TYPE STRING.
+*******************************************************
+SELECTION-SCREEN SKIP 4.
+
+SELECTION-SCREEN BEGIN OF BLOCK BLK1 WITH FRAME NO INTERVALS.
+
+PARAMETERS: KUNNR TYPE  RF02D-KUNNR, " combination of these two fields
+            BUKRS TYPE  RF02D-BUKRS. " checked for in the table KNB1
+
+SELECTION-SCREEN END OF BLOCK BLK1.
+
+
+*****************************************
+AT SELECTION-SCREEN ON BLOCK BLK1.
+
+ IF KUNNR CO '0123456789'. " check all numeric
+  KEY_KUNNR = KUNNR+6(10). " adjust for KUNNR length being 16
+                           " in structure RF02D of all numeric data
+ ELSE.
+  KEY_KUNNR = KUNNR.       " non numeric data
+ ENDIF.
+
+ TRY.
+
+  SELECT SINGLE KUNNR BUKRS FROM KNB1 INTO (KUNNR, BUKRS)
+     WHERE KUNNR = KEY_KUNNR AND BUKRS = BUKRS.
+
+  IF SY-SUBRC <> 0.
+   RAISE EXCEPTION TYPE YCX_YCL_CH11_EXCEPTIONS1 EXPORTING
+   TEXTID = YCX_YCL_CH11_EXCEPTIONS1=>INVALID_COMB_BUKRS_KUNNR
+   BUKRS  = BUKRS KUNNR = KEY_KUNNR.
+
+  ENDIF.
+
+  CATCH YCX_YCL_CH11_EXCEPTIONS1 INTO ER_REF.
+  ETEXT = ER_REF->IF_MESSAGE~GET_TEXT( ).
+  MESSAGE ETEXT TYPE 'E'.
+
+ENDTRY.
+
+******************************************
+START-OF-SELECTION.
+
+WRITE:/5 'Valid Combination:', BUKRS, KEY_KUNNR.
